@@ -27,9 +27,27 @@ describe("ce-worktree SKILL.md", () => {
   })
 
   test("instructs the agent to invoke worktree-manager.sh via a CLAUDE_SKILL_DIR-prefixed path", () => {
+    // Allow either `${CLAUDE_SKILL_DIR}` or `${CLAUDE_SKILL_DIR:-.}` (the
+    // cross-platform fallback form); both resolve correctly on Claude Code.
+    const skillDirPrefixed = /bash "\$\{CLAUDE_SKILL_DIR(?::-[^}]*)?\}\/scripts\/worktree-manager\.sh"/
     expect(
-      SKILL_BODY.includes(`bash "\${CLAUDE_SKILL_DIR}/scripts/worktree-manager.sh"`),
-      "ce-worktree/SKILL.md must instruct the agent to run 'bash \"${CLAUDE_SKILL_DIR}/scripts/worktree-manager.sh\"' — relative paths fail at runtime because the Bash tool's CWD is the user's project, not the skill directory.",
+      skillDirPrefixed.test(SKILL_BODY),
+      "ce-worktree/SKILL.md must instruct the agent to run 'bash \"${CLAUDE_SKILL_DIR}/scripts/worktree-manager.sh\"' (or with a :- fallback) — relative paths fail at runtime because the Bash tool's CWD is the user's project, not the skill directory.",
+    ).toBe(true)
+  })
+
+  // Regression guard for the cross-platform portability concern raised on
+  // PR #772. ce-worktree has no `ce_platforms` restriction, so it is exported
+  // to Codex/Gemini/Pi/etc. via filterSkillsByPlatform; none of those
+  // converters substitute `${CLAUDE_SKILL_DIR}`. Without a `:-` fallback,
+  // the variable expands to empty on those targets and `bash
+  // "/scripts/worktree-manager.sh"` fails. The `:-.` fallback yields the
+  // original bare-relative path (preserving prior behavior on those
+  // platforms) while Claude Code still gets the resolved skill directory.
+  test("uses a :- fallback so non-Claude targets get the bare relative path", () => {
+    expect(
+      SKILL_BODY.includes(`\${CLAUDE_SKILL_DIR:-.}/scripts/worktree-manager.sh`),
+      "ce-worktree/SKILL.md must use the `${CLAUDE_SKILL_DIR:-.}` fallback form so non-Claude targets (Codex, Gemini, Pi, etc.) — where the env var is unset — fall back to the bare relative path rather than expanding to '/scripts/worktree-manager.sh'.",
     ).toBe(true)
   })
 

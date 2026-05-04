@@ -15,10 +15,10 @@ Create a worktree under `.worktrees/<branch>` with branch-specific setup that `g
 
 ## Creating a worktree
 
-Invoke the bundled script via the runtime Bash tool, using `${CLAUDE_SKILL_DIR}` so the path resolves correctly across `claude --plugin-dir` and standard marketplace-cached installs. Bare relative paths like `bash scripts/worktree-manager.sh` fail because the Bash tool runs from the user's project CWD, not the skill directory.
+Invoke the bundled script via the runtime Bash tool. On Claude Code, `${CLAUDE_SKILL_DIR}` resolves to the skill's own directory across both marketplace-cached installs and `claude --plugin-dir` local development; the runtime Bash tool's CWD is the user's project, not the skill directory, so a bare `bash scripts/worktree-manager.sh` fails. On other targets (Codex, Gemini, Pi, etc.) `${CLAUDE_SKILL_DIR}` is unset and the `:-.` fallback yields the bare relative path those harnesses expect.
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/worktree-manager.sh" create <branch-name> [from-branch]
+bash "${CLAUDE_SKILL_DIR:-.}/scripts/worktree-manager.sh" create <branch-name> [from-branch]
 ```
 
 Defaults:
@@ -27,8 +27,8 @@ Defaults:
 
 Examples:
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/worktree-manager.sh" create feat/login
-bash "${CLAUDE_SKILL_DIR}/scripts/worktree-manager.sh" create fix/email-validation develop
+bash "${CLAUDE_SKILL_DIR:-.}/scripts/worktree-manager.sh" create feat/login
+bash "${CLAUDE_SKILL_DIR:-.}/scripts/worktree-manager.sh" create fix/email-validation develop
 ```
 
 After creation, switch to the worktree with `cd .worktrees/<branch-name>`.
@@ -69,7 +69,7 @@ Do not create a worktree for single-task work that can happen on a branch in the
 
 ## Integration
 
-`ce-work` and `ce-code-review` offer this skill as an option. When the user selects "worktree" in those flows, invoke `bash "${CLAUDE_SKILL_DIR}/scripts/worktree-manager.sh" create <branch>` with a meaningful branch name derived from the work description (e.g., `feat/crowd-sniff`, `fix/email-validation`). Avoid auto-generated names like `worktree-jolly-beaming-raven` that obscure the work.
+`ce-work` and `ce-code-review` offer this skill as an option. When the user selects "worktree" in those flows, invoke `bash "${CLAUDE_SKILL_DIR:-.}/scripts/worktree-manager.sh" create <branch>` with a meaningful branch name derived from the work description (e.g., `feat/crowd-sniff`, `fix/email-validation`). Avoid auto-generated names like `worktree-jolly-beaming-raven` that obscure the work.
 
 ## Troubleshooting
 
