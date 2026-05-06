@@ -240,16 +240,16 @@ Run grounding agents in parallel in the **foreground** (do not background — re
 
 1. **Quick context scan** — dispatch a general-purpose sub-agent using the platform's cheapest capable model (e.g., `model: "haiku"` in Claude Code) with this prompt:
 
-   > Read the project's AGENTS.md (or CLAUDE.md only as compatibility fallback, then README.md if neither exists), then discover the top-level directory layout using the native file-search/glob tool (e.g., `Glob` with pattern `*` or `*/*` in Claude Code). Also read `STRATEGY.md` if it exists — it captures the product's target problem, approach, persona, metrics, and tracks. Return a concise summary (under 30 lines) covering:
+   > Read the project's AGENTS.md (or CLAUDE.md only as compatibility fallback, then README.md if neither exists), then discover the top-level directory layout using the native file-search/glob tool (e.g., `Glob` with pattern `*` or `*/*` in Claude Code). Also read `STRATEGY.md` if it exists — it captures the product's target problem, approach, persona, metrics, and tracks. Read any other root-level `*.md` files briefly (e.g., `NOTES.md`, `TODO.md`, `FEEDBACK.md`) — these are *additional context*, not authoritative direction, and Phase 2's constraint-vs-background framing keeps them from steering ideation. Return a concise summary (under 30 lines) covering:
    >
    > - project shape (language, framework, top-level directory layout)
    > - notable patterns or conventions
    > - obvious pain points or gaps
    > - likely leverage points for improvement
    > - product strategy summary, if `STRATEGY.md` was present — include the approach and active tracks verbatim so ideation can weight toward strategy-aligned directions
-   > - **other markdown at root** — list any other root-level `*.md` files by name (e.g., `NOTES.md`, `TODO.md`) under a heading `Additional documents present`. Do **not** read their contents into the summary. They will be surfaced to the user before Phase 2 dispatch so they can name any that should inform ideation; unnamed root-level documents are treated as incidental, not project context.
+   > - **additional context from other root markdown** — for each non-project-defining `*.md` file at root, give a one-line gist under a heading `Additional context`. Do not promote its content into the project-defining sections above; it's background, not direction.
    >
-   > Keep the scan shallow — read only the project-defining files (AGENTS.md/CLAUDE.md/README.md/STRATEGY.md) and directory structure. Do not analyze GitHub issues, templates, or contribution guidelines. Do not do deep code search.
+   > Keep the scan shallow — read only top-level documentation and directory structure. Do not analyze GitHub issues, templates, or contribution guidelines. Do not do deep code search.
    >
    > Focus hint: {focus_hint}
 
@@ -285,8 +285,8 @@ When dispatching `ce-web-researcher`, pass: the focus hint, a brief planning con
 
 Consolidate all dispatched results into a short grounding summary using these sections (omit any section that produced nothing):
 
-- **Codebase context** *(repo mode)* OR **Topic context** *(elsewhere mode)* — project/topic shape, notable patterns or stated constraints, pain points, leverage points
-- **Additional documents present** *(repo mode, when codebase scan listed any)* — names of other root-level markdown files the scan found but did not read. Surface this list verbatim with a one-line invitation: "Pass any of these in if I should include them as context before generation; otherwise I'll proceed without." Proceed without blocking — the user can interrupt to name a file, or stay silent and let unnamed docs remain out of grounding.
+- **Codebase context** *(repo mode)* — project shape, notable patterns, pain points, leverage points (project-defining files: AGENTS.md/CLAUDE.md/README.md/STRATEGY.md) OR **Topic context** *(elsewhere mode)* — topic shape, stated constraints, user-named pain points, opportunity hooks
+- **Additional context** *(repo mode, when codebase scan found other root-level markdown)* — one-line gists per file. Surfaced separately from project-defining context so Phase 2 can treat it as background, not direction
 - **Past learnings** — relevant institutional knowledge from `docs/solutions/`
 - **Issue intelligence** *(when present, repo mode only)* — theme summaries with titles, descriptions, issue counts, and trend directions
 - **External context** *(when web research ran)* — prior art, adjacent solutions, market signals, cross-domain analogies. Note "(reused from earlier dispatch)" when V15 reuse fired
@@ -304,7 +304,7 @@ Dispatch parallel ideation sub-agents on the inherited model (do not tier down -
 
 Give each sub-agent: the grounding summary, the focus hint, the per-agent volume target, and an instruction to generate raw candidates only (not critique). Each agent's first few ideas tend to be obvious -- push past them. Ground every idea in the Phase 1 grounding summary.
 
-**Constraint vs background.** In the dispatch prompt, mark the user's prompt, focus hint, and any named references as *constraints* — ideas that violate them are out regardless of warrant. Mark the rest of the grounding summary (codebase context, learnings, external context, additional documents the user opted in) as *background* — informative, not directive. Background is for grounding warrants and informing direction; it must not pull ideation toward whatever was loudest in the corpus when the user named a different focus. This is the primary defense against grounding noise (an unrelated `FEEDBACK.md`, a tangentially-cited prior-art result) shaping survivors against user intent.
+**Constraint vs background.** In the dispatch prompt, mark the user's prompt, focus hint, and any named references as *constraints* — ideas that violate them are out regardless of basis. Mark the rest of the grounding summary (codebase context, additional context, learnings, external context) as *background* — informative, not directive. Background can support an idea's basis and inform direction; it must not pull ideation toward whatever was loudest in the corpus when the user named a different focus. This is the primary defense against grounding noise (an unrelated `FEEDBACK.md`, a tangentially-cited prior-art result) shaping survivors against user intent.
 
 Assign each sub-agent a different ideation frame as a **starting bias, not a constraint**. Prompt each to begin from its assigned perspective but follow any promising thread -- cross-cutting ideas that span multiple frames are valuable.
 
@@ -325,26 +325,26 @@ Each sub-agent returns this structure per idea:
 
 - **title**
 - **summary** (2-4 sentences)
-- **warrant** (required, tagged) — one of:
+- **basis** (required, tagged) — one of:
   - `direct:` quoted line / specific file / named issue / explicit user-supplied context
   - `external:` named prior art, domain research, adjacent pattern, with source
   - `reasoned:` explicit first-principles argument for why this move likely applies — not a gesture; the argument is written out
-- **why_it_matters** — connects the warrant to the move's significance
+- **why_it_matters** — connects the basis to the move's significance
 - **meeting_test** — one line confirming this would warrant team discussion (waived when Phase 0.5 detected tactical focus signals)
 
-Warrant is required, not optional. If a sub-agent cannot articulate warrant of at least one type, the idea does not surface. The failure mode to prevent is generic "AI-slop" ideas that sound plausible but lack a basis the user can verify.
+Basis is required, not optional. If a sub-agent cannot articulate a basis of at least one type, the idea does not surface. The failure mode to prevent is generic "AI-slop" ideas that sound plausible but lack a basis the user can verify.
 
 **Generation rules (uniform across frames, all modes):**
 
-- Every idea carries articulated warrant. Unjustified speculation does not surface, regardless of how plausible it sounds.
-- Bias toward the warrant type your frame naturally produces — pain/inversion/leverage tend toward `direct:`; analogy and constraint-flipping tend toward `reasoned:`; assumption-breaking is mixed — but don't exclude other warrant types.
+- Every idea carries an articulated basis. Unjustified speculation does not surface, regardless of how plausible it sounds.
+- Bias toward the basis type your frame naturally produces — pain/inversion/leverage tend toward `direct:`; analogy and constraint-flipping tend toward `reasoned:`; assumption-breaking is mixed — but don't exclude other basis types.
 - Apply the meeting-test as a default floor: would this idea warrant team discussion? If not, it's below the floor and does not surface. The floor is relaxed only when Phase 0.5 detected tactical focus signals.
-- Stay within the subject's identity. Product expansions, new surfaces, new markets, retirements, and architectural pivots are fair game when warrant supports them. Subject-replacement moves (abandoning the project, pivoting to unrelated domains, becoming a different organization) are out regardless of warrant.
+- Stay within the subject's identity. Product expansions, new surfaces, new markets, retirements, and architectural pivots are fair game when the basis supports them. Subject-replacement moves (abandoning the project, pivoting to unrelated domains, becoming a different organization) are out regardless of basis.
 - **Honor the asked scope.** When the focus hint names a part of the subject (a flow, a stage, a section, a feature within a larger product — e.g., "account settings", "onboarding flow", "pricing page copy", "gameplay rules"), ideate at full ambition *within that scope*. Expanding the surface to the whole subject — proposing fundamental changes to the broader product when the user named one slice — is a scope mismatch even when no subject-replacement occurred. Big-picture thinking still applies; it just operates inside the bounded surface the user named, not by widening the surface.
 
 **Surprise-me mode addendum.** When Phase 0.2 routed to surprise-me, include this additional instruction in each sub-agent's dispatch prompt:
 
-> No user-specified subject. Through your frame's lens, explore the Phase 1 material and identify the subject(s) you find most interesting for this frame. Different frames finding different subjects is the feature — cross-subject divergence is what makes surprise-me valuable. Each idea still carries warrant; warrant may include identification of the subject itself (why *this* subject is worth ideating on through your lens, citing what in the Phase 1 material signals it).
+> No user-specified subject. Through your frame's lens, explore the Phase 1 material and identify the subject(s) you find most interesting for this frame. Different frames finding different subjects is the feature — cross-subject divergence is what makes surprise-me valuable. Each idea still carries a basis; the basis may include identification of the subject itself (why *this* subject is worth ideating on through your lens, citing what in the Phase 1 material signals it).
 
 After all sub-agents return:
 
