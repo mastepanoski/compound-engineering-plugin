@@ -142,6 +142,15 @@ defend against:
   stack in the same family (serif vs sans vs mono) and pick a weight
   that matches the intent. The single-file invariant still holds; do
   not link to an external stylesheet to fetch the named font.
+- **Typography-scale mismatch.** DESIGN.md typography tokens are often
+  sized for product UI — marketing pages, app screens, hero sections —
+  with body text at 18-20px and headings at 32-52px. A long-form doc
+  surface needs body at ~14-16px and headings at ~1.2-1.6× body. When
+  the DESIGN.md size scale looks product-scaled, use the **family**,
+  **weight**, and **OpenType feature** assignments (these carry the
+  design language) and pick the agent's own **size scale** for the doc
+  surface. Apply DESIGN.md sizes literally only when the tokens are
+  clearly doc-scaled — body tokens at 14-16px, headings under ~32px.
 
 ## Format principles
 

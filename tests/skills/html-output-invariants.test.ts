@@ -180,6 +180,27 @@ describe("html-rendering.md reference content invariants", () => {
     ).toBe(true)
   })
 
+  test("DESIGN.md typography-scale mismatch (product UI sizes vs doc-reading sizes)", () => {
+    // 2026-05-20: a real Dembrandt-extracted DESIGN.md (every.to) contained
+    // 53 typography tokens sized 12-52px — marketing-page scale. A naive
+    // agent could pick text-1 (52px Signifier) for headings and text-19
+    // (20px) for body, producing a comically large plan doc. The reference
+    // must teach the agent to use DESIGN.md's family/weight/feature
+    // assignments while picking its own doc-scaled sizes.
+    expect(
+      /Typography-scale mismatch|size scale.*product.*scaled|sized for product UI|product-scaled/i.test(REFERENCE),
+      "Reference must call out the typography-scale mismatch between product-UI DESIGN.md tokens and doc-reading sizes.",
+    ).toBe(true)
+    expect(
+      /family[\s\S]{0,40}weight[\s\S]{0,40}(OpenType|feature)/i.test(REFERENCE),
+      "Reference must name family/weight/feature as the assignments that transfer from DESIGN.md typography.",
+    ).toBe(true)
+    expect(
+      /agent's own[\s\S]{0,40}size scale|own size scale.*doc|doc-scaled/i.test(REFERENCE),
+      "Reference must instruct the agent to pick its own size scale for the doc surface when DESIGN.md tokens are product-scaled.",
+    ).toBe(true)
+  })
+
   test("markdown is content, not design", () => {
     expect(
       /Markdown source is content, not design|source of content, not a source of design|do NOT treat its bullet|re-choose the rendering/i.test(REFERENCE),
