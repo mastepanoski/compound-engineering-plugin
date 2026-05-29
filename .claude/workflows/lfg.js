@@ -53,7 +53,7 @@
 export const meta = {
   name: 'lfg',
   description: 'Compounding autonomous engineering pipeline named in compound-engineering steps: Worktree, Riffrec, Research, Ideate, Plan, Doc Review, Work, Code Review, Autofix, Re-review, Simplify, Test, Dogfood, Commit & PR, Compound, Cleanup. Runs in an isolated git worktree, recalls prior learnings in and captures a durable learning out, watching CI to green.',
-  whenToUse: 'Hands-off execution of a software task when you want the full compound-engineering loop (institutional recall in, durable learning out, CI watched to green) rather than a single linear pass. Runs in an isolated git worktree so your checkout is untouched. Pass the feature description (or a Riffrec bundle path) as args. Add { dryRun: true } to stop before Commit & PR / CI / Compound.',
+  whenToUse: 'Hands-off execution of a software task when you want the full compound-engineering loop (institutional recall in, durable learning out, CI watched to green) rather than a single linear pass. Runs in an isolated git worktree so your checkout is untouched. Pass the feature description — or a Riffrec bundle, video, audio, or screenshot path — as args. Add { dryRun: true } to stop before Commit & PR / CI / Compound.',
   phases: [
     { title: 'Worktree', detail: 'Create an isolated git worktree so the run never touches the user checkout' },
     { title: 'Riffrec', detail: 'ce-riffrec-feedback-analysis — if a recording is present, find + analyze it and fold its findings into the task' },
@@ -419,7 +419,7 @@ if (wtSetup && wtSetup.created && wtSetup.path) {
 
 phase('Riffrec')
 const riffrec = await agent(
-  `Determine whether a Riffrec product-feedback recording is available for this task, then act.\n\nTask:\n${task}\n\nLook for a \`riffrec-*.zip\` or a bundle containing session.json + events.json + recording.webm + voice.webm — in any path named in the task, the repo root, the current directory, or ~/Downloads.\n- If you find one, invoke the ce-riffrec-feedback-analysis skill to analyze it, and return found=true, the path, and the structured product feedback (bugs, UX issues, repro steps, the user's spoken intent).\n- If none exists, return found=false and stop — do not fabricate feedback. ${NON_INTERACTIVE}`,
+  `Determine whether product-feedback input is available for this task, then act.\n\nTask:\n${task}\n\nLook for any of these — in any path named in the task, the repo root, the current directory, or ~/Downloads:\n- a \`riffrec-*.zip\` or a bundle containing session.json + events.json + recording.webm + voice.webm;\n- a video or audio recording (.mp4 / .mov / .webm / .m4a / .mp3 / .wav);\n- one or more screenshots (image files) showing the problem.\n\n- For a Riffrec bundle, video, or audio: invoke the ce-riffrec-feedback-analysis skill on it and return found=true, the path, and the structured product feedback (bugs, UX issues, repro steps, the user's spoken intent).\n- For screenshots: view them, derive what is broken or requested, and return found=true, the path, and that as the feedback.\n- If none exists, return found=false and stop — do not fabricate feedback. ${NON_INTERACTIVE}`,
   { label: 'riffrec', phase: 'Riffrec', schema: RIFFREC_SCHEMA }
 )
 const riffrecFeedback = (riffrec && riffrec.found && riffrec.feedback) ? riffrec.feedback : ''
@@ -540,7 +540,7 @@ if (planConcerns.length) log(`Doc Review raised ${planConcerns.length} non-fatal
 
 phase('Work')
 const build = await agent(
-  `${wt}Invoke the ce-work skill to execute the plan at ${planPath}. Implement the full feature, following the codebase's existing patterns and the conventions surfaced in research. Address these Doc Review concerns as you go:\n${JSON.stringify(planConcerns)}\n${NON_INTERACTIVE}\n\nWhen done, report whether files actually changed, a concise summary, the files touched, and which observable surfaces (web-ui / ios / cli / api / library / docs) the change affects.`,
+  `${wt}Invoke the ce-work skill to execute the plan at ${planPath}. Implement the full feature, following the codebase's existing patterns and the conventions surfaced in research. If this is a bug fix (including any Riffrec/feedback-sourced run), reproduce the bug locally FIRST — minimal synthetic state, anonymize any production data, never commit throwaway repro data — then fix the confirmed root cause. Address these Doc Review concerns as you go:\n${JSON.stringify(planConcerns)}\n${NON_INTERACTIVE}\n\nWhen done, report whether files actually changed, a concise summary, the files touched, and which observable surfaces (web-ui / ios / cli / api / library / docs) the change affects.`,
   { label: 'work', phase: 'Work', schema: BUILD_SCHEMA }
 )
 if (!build || !build.changed) {
@@ -697,6 +697,15 @@ if (DRY_RUN) {
     (worktreeBranch ? `You are already on branch ${worktreeBranch} in the worktree — commit ALL work to THIS branch, push it, and open the PR from it. Do NOT create another branch or switch branches.\n\n` : '') +
     (observable
       ? `This change has an observable surface (${surfaceList}) — also invoke the ce-demo-reel skill to capture visual/CLI proof and include its markdown in the PR body.\n\n`
+      : '') +
+    (riffrecFeedback
+      ? `This is a feedback-sourced run. Write the PR body from this exact template so the issue is understandable WITHOUT watching the recording:\n` +
+        `## What the user reported\n<one or two plain-language sentences>\n> <verbatim narration excerpt from the analysis, as a Markdown block quote>\n<any "before" frames from the analysis>\n\n` +
+        `## The problem\n<technical root cause>\n\n` +
+        `## How we reproduced it\n<minimal local state + exact steps>\n\n` +
+        `## The fix\n<what changed and why, kept tight>\n\n` +
+        `## Demo\n<after evidence from ce-demo-reel proving it works>\n\n` +
+        `## Testing\n<regression test covering this bug + other checks run>\n\n`
       : '') +
     `In the PR body, add a "## Residual Findings" section listing these unresolved items verbatim (omit the section if the list is empty):\n${JSON.stringify(residualForPr, null, 2)}\n\nReturn the PR number, URL, and branch.`,
     { label: 'commit-pr', phase: 'Commit & PR', schema: SHIP_SCHEMA }
