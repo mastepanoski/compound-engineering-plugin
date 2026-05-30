@@ -67,6 +67,21 @@ describe("ce-work review contract", () => {
     expect(beta).not.toContain("gh pr create")
   })
 
+  test("ce-work-beta mirrors residual work gate sentinel with ce-work", async () => {
+    const workShipping = await readRepoFile(
+      "plugins/compound-engineering/skills/ce-work/references/shipping-workflow.md",
+    )
+    const betaShipping = await readRepoFile(
+      "plugins/compound-engineering/skills/ce-work-beta/references/shipping-workflow.md",
+    )
+
+    expect(workShipping).toContain("Actionable findings: none.")
+    expect(betaShipping).toContain("Actionable findings: none.")
+    expect(betaShipping).not.toContain("Residual actionable work: none.")
+    expect(betaShipping).toContain("not yet fixed")
+    expect(betaShipping).not.toContain("skill did not auto-fix")
+  })
+
   test("includes per-task testing deliberation in execution loop", async () => {
     const content = await readRepoFile("plugins/compound-engineering/skills/ce-work/SKILL.md")
 

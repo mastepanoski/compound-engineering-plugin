@@ -12,15 +12,15 @@ Determine the diff to review using this priority order:
 
 The scope step in the SKILL.md handles discovery and passes you the resolved diff. You do not need to run git commands yourself unless PR scope mode requires it (below).
 
-## PR-remote scope
+## Remote scope (`pr-remote` and `branch-remote`)
 
-When the review context includes `<pr-scope-mode>pr-remote</pr-scope-mode>`, the working tree is **not** the PR head. Do **not** use Read/Grep on workspace paths for files in the changed-file list — they may not match the PR.
+When the review context includes `<pr-scope-mode>pr-remote</pr-scope-mode>` or `<pr-scope-mode>branch-remote</pr-scope-mode>`, the working tree is **not** the reviewed head. Do **not** use Read/Grep on workspace paths for files in the changed-file list — they may not match the branch or PR under review.
 
 Instead:
 
-- Prefer `git show <PR_HEAD_REF>:<path>` when `<pr-head-ref>` is provided in context.
+- Prefer `git show <remote-head-ref>:<path>` when `<pr-head-ref>` or `<branch-head-ref>` is provided in context.
 - Otherwise rely on diff hunks in the provided `<diff>` only.
-- Do not treat local workspace contents as evidence for findings on PR changed files.
+- Do not treat local workspace contents as evidence for findings on changed files.
 
 ## Finding Classification Tiers
 

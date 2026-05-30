@@ -326,6 +326,27 @@ describe("ce-code-review contract", () => {
     expect(content).toMatch(/Standalone.*`base:`.*branch-remote/)
   })
 
+  test("remote scope modes forbid workspace inspection on wrong tree", async () => {
+    const skill = await readRepoFile("plugins/compound-engineering/skills/ce-code-review/SKILL.md")
+    const diffScope = await readRepoFile(
+      "plugins/compound-engineering/skills/ce-code-review/references/diff-scope.md",
+    )
+    const validator = await readRepoFile(
+      "plugins/compound-engineering/skills/ce-code-review/references/validator-template.md",
+    )
+
+    expect(skill).toContain("<pr-scope-mode>branch-remote</pr-scope-mode>")
+    expect(skill).toContain("<branch-head-ref>")
+    expect(skill).toMatch(/local-aligned.*local tree diff/i)
+    expect(skill).not.toMatch(/append.*`DIFF:`.*unpushed/i)
+    expect(skill).toMatch(/Do \*\*not\*\* call `gh pr diff` or append remote hunks/)
+
+    expect(diffScope).toContain("branch-remote")
+    expect(diffScope).toContain("pr-remote")
+
+    expect(validator).toContain("branch-remote")
+  })
+
   test("mode-aware demotion routes weak general-quality findings to soft buckets", async () => {
     const content = await readRepoFile("plugins/compound-engineering/skills/ce-code-review/SKILL.md")
 
