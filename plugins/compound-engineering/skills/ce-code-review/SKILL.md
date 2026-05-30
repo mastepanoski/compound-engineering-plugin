@@ -188,10 +188,10 @@ gh pr view <number-or-url> --json state,title,body,files
 
 Apply skip rules in order:
 
-- `state` is `CLOSED` or `MERGED` -> stop with message `PR is closed/merged; not reviewing.`
-- **Trivial-PR judgment**: spawn a lightweight sub-agent (use `model: haiku` in Claude Code; gpt-5.4-nano or equivalent in Codex) with the PR title, body, and changed file paths. The agent's task: "Is this an automated or trivial PR that does not warrant a code review? Consider: dependency lock-file or manifest-only bumps, automated release commits, chore version increments with no substantive code changes. When in doubt, answer no — false negatives (skipped reviews that should have run) are more costly than false positives (unnecessary reviews)." If the judgment returns yes: stop with message `PR appears to be a trivial automated PR; not reviewing. Run without a PR argument to review the current branch, or pass base:<ref> if review is intended.`
+- `state` is `CLOSED` or `MERGED` -> stop with reason `PR is closed/merged; not reviewing.`
+- **Trivial-PR judgment**: spawn a lightweight sub-agent (use `model: haiku` in Claude Code; gpt-5.4-nano or equivalent in Codex) with the PR title, body, and changed file paths. The agent's task: "Is this an automated or trivial PR that does not warrant a code review? Consider: dependency lock-file or manifest-only bumps, automated release commits, chore version increments with no substantive code changes. When in doubt, answer no — false negatives (skipped reviews that should have run) are more costly than false positives (unnecessary reviews)." If the judgment returns yes: stop with reason `PR appears to be a trivial automated PR; not reviewing. Run without a PR argument to review the current branch, or pass base:<ref> if review is intended.`
 
-When any skip rule fires, emit the message and stop without dispatching reviewers. **Standalone**, **`base:`**, and **branch-remote** paths are unaffected. **Draft PRs are reviewed normally.**
+When any skip rule fires, stop without dispatching reviewers. **Default mode:** emit the reason as plain text. **`mode:agent`:** emit JSON only — `{"status":"skipped","reason":"<same message>"}` — so programmatic callers can parse the outcome. **Standalone**, **`base:`**, and **branch-remote** paths are unaffected. **Draft PRs are reviewed normally.**
 
 If no skip rule fires, fetch PR metadata and diff **without checkout**:
 
@@ -205,7 +205,20 @@ gh pr diff <number-or-url> --color=never
 
 Set `BASE:` to `pr:<number-or-url>` (logical marker — not a git SHA). Set `FILES:` from the `files` array. Set `DIFF:` from `gh pr diff`. Set `UNTRACKED:` from `git ls-files --others --exclude-standard` on the **current** checkout (usually empty during PR-remote review).
 
-**Local alignment (optional):** If `git rev-parse --abbrev-ref HEAD` equals `headRefName` from PR metadata, also compute `git diff -U10 $(git merge-base HEAD <resolved-base-ref>)` against the PR base when `<resolved-base-ref>` is available locally, and **append** to `DIFF:` so unpushed local commits on the PR branch are included. Note in Coverage whether scope is remote-only or remote+local.
+**PR scope mode.** Compare `git rev-parse --abbrev-ref HEAD` to `headRefName` from PR metadata:
+
+- **`local-aligned`** — current branch matches `headRefName`. Local Read/Grep/git blame against workspace files are valid for PR changed paths.
+- **`pr-remote`** — branches differ. The working tree is **not** the PR head; workspace file contents for changed paths may be stale or unrelated.
+
+When **`pr-remote`**, before Stage 4:
+
+1. Best-effort fetch PR head without checkout: `git fetch --no-tags origin <headRefName>:refs/review/pr-<number>-head` (substitute PR number from metadata).
+2. When fetch succeeds, set `PR_HEAD_REF=refs/review/pr-<number>-head` for reviewers and validators. When fetch fails, omit `PR_HEAD_REF` and note in Coverage — reviewers must rely on diff hunks only.
+3. Include `<pr-scope-mode>pr-remote</pr-scope-mode>` and, when set, `<pr-head-ref>...</pr-head-ref>` in the Stage 4 review context bundle.
+
+Reviewers and Stage 5b validators in **`pr-remote`** mode must **not** Read/Grep workspace paths for files in `FILES:`. Inspect via `git show <PR_HEAD_REF>:<path>` when `PR_HEAD_REF` is set, otherwise use only the provided diff hunks. **`local-aligned`** uses normal workspace inspection.
+
+**Local alignment (optional):** If scope mode is **`local-aligned`**, also compute `git diff -U10 $(git merge-base HEAD <resolved-base-ref>)` against the PR base when `<resolved-base-ref>` is available locally, and **append** to `DIFF:` so unpushed local commits on the PR branch are included. Note in Coverage whether scope is remote-only or remote+local.
 
 If `gh pr diff` fails, stop with an actionable error — do not fall back to checkout.
 
@@ -366,14 +379,14 @@ Spawn each selected persona reviewer using the subagent template included below.
 2. Shared diff-scope rules from the diff-scope reference included below
 3. The JSON output contract from the findings schema included below
 4. PR metadata: title, body, and URL when reviewing a PR (empty string otherwise). Passed in a `<pr-context>` block so reviewers can verify code against stated intent
-5. Review context: intent summary, file list, diff
+5. Review context: intent summary, file list, diff, PR scope mode (`local-aligned` | `pr-remote`), and `PR_HEAD_REF` when set
 6. Run ID and reviewer name for the artifact file path
 7. **For `project-standards` only:** the standards file path list from Stage 3b, wrapped in a `<standards-paths>` block appended to the review context
 8. **For `data-migration` only:** the resolved review base ref from Stage 1 (`BASE:` marker), wrapped in `<review-base>` inside the review context so schema drift checks never assume `main`
 
 Persona sub-agents are **read-only** with respect to the project: they review and return structured JSON. They do not edit project files or propose refactors. The one permitted write is saving their full analysis to the run-artifact path specified in the output contract (under `/tmp/compound-engineering/ce-code-review/<run-id>/`).
 
-Read-only here means **non-mutating**, not "no shell access." Reviewer sub-agents may use non-mutating inspection commands when needed to gather evidence or verify scope, including read-oriented `git` / `gh` usage such as `git diff`, `git show`, `git blame`, `git log`, and `gh pr view`. They must not edit project files, change branches, commit, push, create PRs, or otherwise mutate the checkout or repository state.
+Read-only here means **non-mutating**, not "no shell access." Reviewer sub-agents may use non-mutating inspection commands when needed to gather evidence or verify scope, including read-oriented `git` / `gh` usage such as `git diff`, `git show`, `git blame`, `git log`, and `gh pr view`. In **`pr-remote`** scope (see Stage 1), inspect changed files via `git show <PR_HEAD_REF>:<path>` or diff hunks — do not Read/Grep workspace paths for files in scope. They must not edit project files, change branches, commit, push, create PRs, or otherwise mutate the checkout or repository state.
 
 Each persona sub-agent writes full JSON (all schema fields) to `/tmp/compound-engineering/ce-code-review/{run_id}/{reviewer_name}.json` and returns compact JSON with merge-tier fields only:
 
@@ -532,7 +545,7 @@ Each object in `findings` uses the merged finding fields: `#`, `title`, `severit
 
 `actionable_findings` lists the `gated_auto` / `manual` + `downstream-resolver` subset with the same fields plus stable `#`.
 
-On failure before review completes, set `"status": "failed"` and `"reason": "<one sentence>"`. When all reviewers fail, use `"status": "degraded"` with a reason. Do not emit markdown tables when `mode:agent` is active.
+On failure before review completes, set `"status": "failed"` and `"reason": "<one sentence>"`. When all reviewers fail, use `"status": "degraded"` with a reason. When a PR skip rule fires (closed/merged/trivial), use `"status": "skipped"` with the skip reason. Do not emit markdown tables when `mode:agent` is active.
 
 ## Quality Gates
 

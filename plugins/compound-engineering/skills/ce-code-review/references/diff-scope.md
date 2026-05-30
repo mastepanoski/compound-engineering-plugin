@@ -10,7 +10,17 @@ Determine the diff to review using this priority order:
 2. **Working copy changes.** If there are unstaged or staged changes (`git diff HEAD` is non-empty), review those.
 3. **Unpushed commits vs base branch.** If the working copy is clean, review `git diff $(git merge-base HEAD <base>)..HEAD` where `<base>` is the default branch (main or master).
 
-The scope step in the SKILL.md handles discovery and passes you the resolved diff. You do not need to run git commands yourself.
+The scope step in the SKILL.md handles discovery and passes you the resolved diff. You do not need to run git commands yourself unless PR scope mode requires it (below).
+
+## PR-remote scope
+
+When the review context includes `<pr-scope-mode>pr-remote</pr-scope-mode>`, the working tree is **not** the PR head. Do **not** use Read/Grep on workspace paths for files in the changed-file list — they may not match the PR.
+
+Instead:
+
+- Prefer `git show <PR_HEAD_REF>:<path>` when `<pr-head-ref>` is provided in context.
+- Otherwise rely on diff hunks in the provided `<diff>` only.
+- Do not treat local workspace contents as evidence for findings on PR changed files.
 
 ## Finding Classification Tiers
 
