@@ -26,7 +26,7 @@ Two failed framings were explored and rejected before settling:
 
 ## Decisions settled in dialogue
 
-- **Control downside by relocating the guardrail, not by gating action.** For reversible, visible edits the control is *after* (revert), *ambient* (the diff + a smart agent), and at the *permanence step* (commit), not *before* (a precondition). **Gate permanence, not action.**
+- **Control downside by relocating the guardrail, not by gating action.** For reversible, visible edits the control is *after* (revert), *ambient* (the diff + a smart agent), and at the *permanence step* — which is the **push**, not the commit (a local commit is private and reversible) — not *before* (a precondition). **Gate the push, not the action.**
 - **Keep the act policy minimal and judgment-based, plus a bias-to-act framing.** The entire apply policy is a few lines: apply clear improvements, push back (don't apply) when the reviewer is wrong, defer what needs a decision. This works because the agent is smart and the only guardrail is a judgment one ("push back if wrong"). Add an explicit anti-conservatism instruction so the agent does not hedge on clear, reversible improvements.
 - **No deny-list.** Dropped entirely. The one genuine residual ("green tests ≠ safe" for auth/contract/concurrency edits) is handled by surfacing those prominently in the report, not by blocking them.
 - **The tree-owner acts.** Whoever owns the working tree applies. It dissolves the orchestration-interruption scar.
@@ -43,7 +43,7 @@ Two failed framings were explored and rejected before settling:
 - **R7. ce-work apply step adopts the same act philosophy.** `references/review-findings-followup.md`'s current eligibility filter ("apply only if `suggested_fix` present AND confidence 100/75 AND mechanical AND evidence matches; when unsure, skip") is the conservative trap. Reframe it to bias-to-act for the tree-owner, consistent with R1, so the orchestrated path isn't timid while the standalone path is bold.
 - **R8. Explicit non-revival.** Do not reintroduce `mode:autofix`, `autofix_class`-as-permission, or a deny-list. Keep the apply policy judgment-based.
 - **R9. Tests + docs.** Update `tests/review-skill-contract.test.ts`, the numbering fixture, the output template, and the skill doc as needed; check the `ce-work-beta` counterpart.
-- **R10. Commit ownership = permanence owner.** The committer is whoever owns permanence in that context: in default (interactive) mode the **human** commits, so the review applies but **does not auto-commit**; in `mode:agent` the **caller** (ce-work) applies and commits after its diff review (unchanged from today). The review skill never auto-commits in its own (interactive) runs. This is "gate permanence, not action" — apply freely (reversible), but the commit stays with the owner who can veto the diff.
+- **R10. Commit ownership = permanence owner.** The permanence gate is the **push**, not the commit (a local commit is private and reversible). In default (interactive) mode the review applies and **commits the fixes as an isolated `fix(review):` commit when the working tree was clean before the review**; on a dirty tree it applies but leaves them for the human's commit (the fixes can't be isolated from the user's WIP). It never pushes. In `mode:agent` the **caller** (ce-work) applies and commits after its diff review. This is "gate the push, not the action" — apply and commit locally (both reversible), never push.
 
 ## Behavior Spec
 
@@ -60,13 +60,13 @@ There are only two modes: **default** (interactive markdown) and `**mode:agent**
 
 | Invocation            | Tree/permanence owner      | Apply                                               | Commit                                                                                                                                                                            |
 | --------------------- | -------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Default (interactive) | The human                  | Review applies + verifies + reports Applied section | **No auto-commit.** Changes fold into the human's working set; they review the diff and commit. (No prompt — the skill never blocks; output says "review and commit when ready.") |
+| Default (interactive) | The human                  | Review applies + verifies + reports Applied section | **Commit when the pre-review tree was clean** — isolated `fix(review):` commit. On a dirty tree, apply but leave the fixes for the human's commit (can't isolate from WIP). Never push. |
 | `mode:agent`          | The caller (e.g., ce-work) | Review is **report-only**; `applied_fixes: []`      | Caller applies *and* commits after its own diff review (ce-work already does `fix(review): …` today)                                                                              |
 
 
 This relaxes the prior "`mode:agent` changes serialization only" invariant into "`mode:agent` is the machine-handoff mode: serialization *and* defer-apply-to-caller." That is an intentional, explainable evolution — `mode:agent` already means "a caller owns the workflow."
 
-**Edge case — default mode run without a human (e.g., wired into a cron/loop).** Behavior is unchanged: apply + report, no auto-commit; the applied changes sit in the working set for whatever picks them up. Operators who want autonomous apply-and-commit should use `mode:agent` with a caller (ce-work) that owns the commit. We do not add a third mode for this.
+**Edge case — default mode run without a human (e.g., wired into a cron/loop).** Behavior is unchanged: apply, commit if the tree was clean (else leave the fixes for whatever commits the WIP), report; never push. Operators who want autonomous apply-and-commit on a dirty tree should use `mode:agent` with a caller (ce-work) that owns the commit. We do not add a third mode for this.
 
 ### Output (R5)
 
@@ -127,7 +127,7 @@ In `mode:agent`, `applied_fixes` is empty (caller applies) and the same findings
 ## Resolved decisions
 
 - **ce-work apply boldness (R7).** Same act policy as the standalone review — bias-to-act, judgment. ce-work already reviews diffs before committing, which is its permanence gate.
-- **Commit behavior (R10).** Commit = permanence owner: interactive review applies but does **not** auto-commit (the human commits); `mode:agent` caller applies and commits. No third "autonomous top-level" mode.
+- **Commit behavior (R10).** The permanence gate is the **push, not the commit** (a local commit is private and reversible). Interactive review applies and, **when the working tree was clean before the review, commits the fixes as an isolated `fix(review):` commit**; on a dirty tree it applies but leaves them for the user's commit (the fixes can't be cleanly isolated from the user's WIP). It never pushes. `mode:agent` caller applies and commits. No third "autonomous top-level" mode.
 - **Modes.** Only `default` and `mode:agent` exist (`mode:headless` is a deprecated alias; `mode:report-only` ignored). The earlier draft's separate `mode:headless` apply row was wrong and is removed.
 
 ## Open Questions

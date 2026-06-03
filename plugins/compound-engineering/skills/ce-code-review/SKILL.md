@@ -1,6 +1,6 @@
 ---
 name: ce-code-review
-description: "Structured code review using tiered persona agents, confidence-gated findings, and a merge/dedup pipeline. In interactive mode it also applies safe, verified fixes (never commits or pushes); in mode:agent it reports only and the caller applies. Use when reviewing code changes before creating a PR."
+description: "Structured code review using tiered persona agents, confidence-gated findings, and a merge/dedup pipeline. In interactive mode it applies safe, verified fixes and commits them when the working tree is clean (it never pushes); in mode:agent it reports only and the caller applies. Use when reviewing code changes before creating a PR."
 argument-hint: "[mode:agent] [blank to review current branch, or provide PR link]"
 ---
 
@@ -41,7 +41,7 @@ Emit a one-line failure reason. In `mode:agent`, return JSON: `{"status":"failed
 
 Same pipeline for default and `mode:agent`:
 
-- **Apply, don't ship.** Never commit, push, create PRs, or file tickets — in any mode. In **default (interactive)** mode the review may *apply* safe, verified fixes to the working tree (a reversible, visible edit — see Stage 5c); in **`mode:agent`** it never mutates the tree — it reports and the caller applies.
+- **Apply and commit locally; never push.** Never push, open PRs, or file tickets — in any mode (push is the outward-facing step the user owns). In **default (interactive)** mode the review applies safe, verified fixes (Stage 5c); when the working tree was clean before the review it also commits them as an isolated `fix(review):` commit, and on a dirty tree it applies but leaves them for the user's commit. In **`mode:agent`** it never mutates the tree — it reports and the caller applies and commits.
 - **No blocking prompts.** Never use `AskUserQuestion`, `request_user_input`, `ask_user`, or other blocking question tools. Infer intent, plan, and scope from explicit tokens, git state, PR metadata, and conversation. Note uncertainty in Coverage or the verdict — do not stop to ask.
 - **Explicit mutations only.** Never run `gh pr checkout`, `git checkout`, `git switch`, or similar branch-switch commands. Passing a PR number, URL, or branch name selects **review scope**, not permission to mutate the working tree. To review local uncommitted work on a feature branch, check out that branch yourself (or stay on it) and pass `base:` or no target.
 - **Smart defaults.** Untracked files: review tracked changes only and list excluded paths in Coverage. Plan: use `plan:` when passed; otherwise discover conservatively from PR body or branch keywords. Weak advisory P2/P3 from testing/maintainability alone: demote to `testing_gaps` / `residual_risks` per Stage 5.
@@ -508,7 +508,13 @@ Severity, confidence, and cross-reviewer agreement tell you what to do first and
 
 **Verify, then keep.** After applying, run the affected tests and lint (targeted by default; broaden when fixes span files). If they fail, revert that fix and report it as a finding instead — an unverified fix is not finished. Never leave the tree red.
 
-**Do not commit.** Applying is a reversible edit; committing is permanence, and the human owns it. Leave applied changes in the working tree (unstaged) for the human to review and commit — the Applied section of the report says what changed. Never auto-commit, push, or open a PR. (When a caller orchestrates the run via `mode:agent`, the review applies nothing here; the caller applies and commits.)
+**Commit when the pre-review tree was clean.** Before applying, note whether the working tree already had uncommitted changes (`git status --porcelain`). The permanence gate is the **push**, not the commit — a local commit is private and reversible (`git reset --soft HEAD~1`).
+
+- **Clean before the review:** after applying and verifying, commit the fixes as one isolated `fix(review): <summary>` commit. The only changes are the review's own, so the commit is purely the fixes — labeled and reversible — and it returns the tree to a known state instead of leaving a dangling uncommitted obligation the user has to track.
+- **Dirty before the review:** apply but do **not** commit. The fixes are interleaved with the user's in-flight work, so a fix-only commit can't be cleanly isolated; they ride along with the commit the user was already going to make. The Applied section lists what changed.
+- **Never push, open a PR, or file tickets** — that's the outward-facing step the user owns.
+
+(In `mode:agent` Stage 5c is skipped: the review applies and commits nothing; the caller applies and commits.)
 
 **Surface green-but-unverifiable edits.** When an applied fix touches auth/authz, a public or cross-service contract/schema, or concurrency/ordering, a passing test does not prove safety — flag it prominently in the Applied section so the diff reviewer's attention goes there.
 
@@ -536,7 +542,7 @@ Per-severity tables are **5 columns** — `Route` is not shown here (it appears 
 - **Inconsistent treatment across severities** (e.g. P1 as blocks while P2/P3 are tables) — every severity uses the same table + optional detail-line shape
 
 1. **Header.** Scope, intent, mode, reviewer team with per-conditional justifications.
-2. **Applied (default mode only).** When Stage 5c applied fixes, list them first — before the findings tables — in an Applied section (see review output template): `# | File | Fix | Reviewer`, then a one-line validation outcome (e.g. "pin tests 4 -> 6; suite 94 pass, lint clean"). Flag green-but-unverifiable edits (auth/contract/concurrency) prominently. Omit this section in `mode:agent` and when nothing was applied. Applied findings appear here, not in the severity tables.
+2. **Applied (default mode only).** When Stage 5c applied fixes, list them first — before the findings tables — in an Applied section (see review output template): `# | File | Fix | Reviewer`, then a one-line validation outcome (e.g. "pin tests 4 -> 6; suite 94 pass, lint clean") and commit status (committed as `fix(review): …` on a clean tree, or left uncommitted for the user on a dirty one). Flag green-but-unverifiable edits (auth/contract/concurrency) prominently. Omit this section in `mode:agent` and when nothing was applied. Applied findings appear here, not in the severity tables.
 3. **Findings.** Pipe-delimited tables grouped by severity (`### P0 -- Critical`, `### P1 -- High`, `### P2 -- Moderate`, `### P3 -- Low`), terse `Issue` cell (one short clause — depth goes in the detail line), 5 columns (`#`, file, issue, reviewer(s), confidence) — route is **not** shown here (it's in Actionable Findings and the JSON). Under each table, add a keyed detail line (`- **#N** — …`) for findings whose one-liner is not self-sufficient (usually P0/P1). Omit empty severity levels. Use the **same** shape for every severity — never render one severity as field-blocks and another as a table. Finding numbers come from the stable assignment in Stage 5 -- never re-derive them per severity table.
 4. **Requirements Completeness.** Include only when a plan was found in Stage 2b. For each requirement (R1, R2, etc.) and implementation unit in the plan, report whether corresponding work appears in the diff. Use a simple checklist: met / not addressed / partially addressed. Routing depends on `plan_source`:
    - **`explicit`** (caller-provided or PR body): Flag unaddressed requirements or implementation units as P1 findings with `autofix_class: manual`, `owner: downstream-resolver`. These enter the actionable queue.
@@ -616,7 +622,7 @@ Do not spawn stack reviewers mechanically from file extensions alone. The trigge
 
 ## After Review
 
-After Stage 6, stop. Never commit, push, open PRs, or file tickets from this skill. In default (interactive) mode, Stage 5c has already applied the safe fixes (Applied section) and left them unstaged for the user to commit. In `mode:agent` the review mutates nothing — the caller (for example `ce-work`) and the user apply fixes, file tickets, or accept residual risk using the report and artifact.
+After Stage 6, stop. Never push, open PRs, or file tickets from this skill. In default (interactive) mode, Stage 5c has applied the safe fixes (Applied section) — committed as an isolated `fix(review):` commit when the tree was clean, or left for the user's commit when it wasn't. In `mode:agent` the review mutates nothing — the caller (for example `ce-work`) and the user apply fixes, file tickets, or accept residual risk using the report and artifact.
 
 ### Emit actionable findings summary
 

@@ -2,7 +2,7 @@
 
 > Structured code review using tiered persona agents, confidence-gated findings, and a merge/dedup pipeline.
 
-`ce-code-review` is the **deep code review** skill. It analyzes the diff (PR, branch, or current changes), selects the right reviewer personas for what was actually touched, dispatches them in parallel, then merges and deduplicates their findings into a single report. Each finding carries a severity (P0-P3), an autofix class (`gated_auto`, `manual`, `advisory`) that signals follow-up shape, and an owner. In interactive mode the review applies the safe, verified fixes itself (a reversible edit — it never commits or pushes); in `mode:agent` it reports and the caller applies.
+`ce-code-review` is the **deep code review** skill. It analyzes the diff (PR, branch, or current changes), selects the right reviewer personas for what was actually touched, dispatches them in parallel, then merges and deduplicates their findings into a single report. Each finding carries a severity (P0-P3), an autofix class (`gated_auto`, `manual`, `advisory`) that signals follow-up shape, and an owner. In interactive mode the review applies the safe, verified fixes itself and commits them when the working tree is clean (it never pushes); in `mode:agent` it reports and the caller applies.
 
 The compound-engineering ideation chain is `/ce-ideate → /ce-brainstorm → /ce-plan → /ce-work`. `ce-code-review` is `/ce-work`'s **Tier 2 escalation** target — invoked automatically for sensitive surfaces, large diffs, or explicit deep-review requests, but also directly invocable any time you want a structured review of the current branch or a specific PR.
 
@@ -14,7 +14,7 @@ The compound-engineering ideation chain is `/ce-ideate → /ce-brainstorm → /c
 |----------|--------|
 | What does it do? | Selects reviewer personas based on diff content, dispatches them in parallel, merges findings into one report with confidence gating and auto-fix routing |
 | When to use it | Before opening a PR for sensitive/large work; explicit deep review requested; harness has no built-in `/review` |
-| What it produces | A structured findings report; in interactive mode it also applies safe, verified fixes (an Applied section) and leaves them unstaged for you to commit |
+| What it produces | A structured findings report; in interactive mode it also applies safe, verified fixes (an Applied section), committing them as a `fix(review):` commit when your tree is clean — or leaving them for your commit if it was dirty (it never pushes) |
 | Modes | Interactive (default — applies safe fixes) and `mode:agent` (JSON; report-only, caller applies) |
 
 ---
@@ -40,7 +40,7 @@ Generalist code review prompts collapse in predictable ways:
 - **Confidence-gated synthesis** — findings merge, dedupe, promote on cross-persona agreement, and route by autofix class
 - **Severity scale (P0-P3) + autofix class** — separates urgency from action ownership
 - **Two modes** — Interactive (default; applies safe verified fixes itself) and `mode:agent` (JSON machine handoff; report-only, the caller applies)
-- **Caller-owned apply + Residual Work Gate** — in `mode:agent` the caller (e.g. `/ce-work`) applies fixes and runs the Residual Work Gate (accept / file tickets / continue / stop); the review skill never commits or pushes
+- **Caller-owned apply + Residual Work Gate** — in `mode:agent` the caller (e.g. `/ce-work`) applies fixes and runs the Residual Work Gate (accept / file tickets / continue / stop); in interactive mode the review commits its applied fixes on a clean tree, and it never pushes
 - **Quick-review short-circuit** — defers to harness-native `/review` for light passes; multi-agent runs only when warranted
 
 ---
@@ -72,7 +72,7 @@ Synthesis owns the final route. Persona-provided routing metadata is input, not 
 
 | Mode | When | Behavior |
 |------|------|----------|
-| **Interactive** _(default)_ | Direct user invocation | Markdown report; the review applies the safe, verified fixes itself (Stage 5c → Applied section), pushes back on findings it disagrees with, and leaves applied changes unstaged for you to commit. Never commits or pushes |
+| **Interactive** _(default)_ | Direct user invocation | Markdown report; the review applies the safe, verified fixes itself (Stage 5c → Applied section), pushes back on findings it disagrees with, and commits them as an isolated `fix(review):` commit when your tree was clean (or leaves them for your commit if it was dirty). Never pushes |
 | **`mode:agent`** | `mode:agent` (alias `mode:headless`) | One JSON object; report-only — the review mutates nothing and the caller (e.g. `/ce-work`) applies findings and owns the Residual Work Gate |
 
 The skill never switches branches: a PR/branch argument selects review *scope* (diffed without checkout), not permission to mutate. Interactive apply edits the current checkout in place; to review the current checkout against another ref, pass `base:<ref>`.
@@ -191,7 +191,7 @@ Use it when it's the right tool — the quick-review short-circuit defers to it 
 Agent judgment over the actual diff — not keyword matching. The 4 always-on + 2 CE always-on personas run for every review. Cross-cutting and stack-specific personas are added when their concern is touched (e.g., security if auth files changed; `ce-data-migration-reviewer` when migration or schema dump files are present). Instruction-prose files skip runtime-focused reviewers (adversarial, races).
 
 **What's the difference between interactive (default) and `mode:agent`?**
-Interactive is the human-facing mode: a markdown report, and the review applies the safe, verified fixes itself (an Applied section), leaving them unstaged for you to commit. `mode:agent` is the machine handoff: one JSON object, report-only — the review mutates nothing and the caller (e.g. `/ce-work`) applies findings on its own terms. `mode:headless` is a deprecated alias for `mode:agent`.
+Interactive is the human-facing mode: a markdown report, and the review applies the safe, verified fixes itself (an Applied section) and commits them when your tree is clean (leaving them for your commit if it was dirty); it never pushes. `mode:agent` is the machine handoff: one JSON object, report-only — the review mutates nothing and the caller (e.g. `/ce-work`) applies findings on its own terms. `mode:headless` is a deprecated alias for `mode:agent`.
 
 **What's the Residual Work Gate?**
 A caller-owned step (not part of the review skill): in `mode:agent`, the caller (typically `/ce-work`) applies what it can, then presents the findings it didn't apply and asks the user: apply now, file tickets, accept with durable sink, or stop. "Accept" requires a real durable record (Known Residuals in PR description, or `docs/residual-review-findings/<sha>.md`) — findings can't disappear into chat.

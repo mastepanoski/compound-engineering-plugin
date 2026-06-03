@@ -17,7 +17,7 @@ describe("ce-code-review contract", () => {
     expect(content).toContain("mode:agent")
     expect(content).toContain("mode:headless")
     expect(content).toContain("/tmp/compound-engineering/ce-code-review/<run-id>/")
-    expect(content).toMatch(/Never commit, push, create PRs, or file tickets/i)
+    expect(content).toMatch(/Never push, open PRs, or file tickets/i)
     expect(content).toContain("run artifact")
     expect(content).toMatch(/check out the PR branch/i)
     expect(content).toMatch(/Never run `gh pr checkout`/i)
@@ -51,7 +51,7 @@ describe("ce-code-review contract", () => {
 
     // mode:agent never mutates; default mode applies safe fixes (this test owns the mutate-contract assertions)
     expect(content).toMatch(/never mutates the tree/i)
-    expect(content).toMatch(/default \(interactive\).{0,4}mode the review may/i)
+    expect(content).toMatch(/default \(interactive\).{0,4}mode the review applies/i)
 
     // Never checkout — explicit mutations only
     expect(content).toMatch(/Never run `gh pr checkout`/i)
@@ -314,10 +314,11 @@ describe("ce-code-review contract", () => {
     expect(content).toMatch(/Push back.*do not apply.*reviewer is wrong/i)
     expect(content).toMatch(/There is no deny-list/i)
 
-    // Scope invariant + verify-then-keep + no auto-commit
+    // Scope invariant + verify-then-keep + commit-on-clean-tree, never push
     expect(content).toMatch(/Apply only when the working tree \*?is\*? what was reviewed/i)
     expect(content).toMatch(/revert that fix and report it/i)
-    expect(content).toMatch(/Do not commit/)
+    expect(content).toMatch(/Commit when the pre-review tree was clean/i)
+    expect(content).toMatch(/Never push, open a PR, or file tickets/i)
 
     // Applied reporting (skill + template)
     expect(content).toMatch(/Applied \(default mode only\)/i)

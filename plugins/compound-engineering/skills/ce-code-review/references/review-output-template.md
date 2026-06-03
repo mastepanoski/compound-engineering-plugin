@@ -27,6 +27,7 @@ Use this **exact format** when presenting synthesized review findings — this e
 | 7 | `orders_controller.rb:88` (+test) | Tightened export file perms `0644 -> 0600` (security-posture — verify in diff) | security |
 
 Validation: export tests 11 -> 13; suite 214 pass, lint clean.
+Committed: `fix(review): cover empty-format branch + tighten export perms` (working tree was clean before review).
 
 ### P0 -- Critical
 
@@ -134,7 +135,7 @@ This fails because: no pipe-delimited tables, no severity-grouped `###` headers,
 - **Detail line (per finding, as needed)** -- keep the `Issue` cell to **one short clause** (roughly 12 words or fewer, no second sentence -- the scannable index, not the explanation); put the full explanation in a bullet list immediately under the severity table, keyed by stable `#`: `- **#N** — <why it matters + concrete fix direction>`. Add a detail line for findings whose one-liner is not self-sufficient -- usually P0/P1; P2/P3 are typically terse-only. This keyed list is the sanctioned home for depth -- never expand a finding into `Field:`-prefixed blocks.
 - **Header includes** scope, intent, and reviewer team with per-conditional justifications
 - **Mode line** -- include `interactive` or `agent`
-- **Applied section (default mode only)** -- when the review applied fixes (Stage 5c), list them first, before the severity tables, as `# | File | Fix | Reviewer` followed by a one-line validation outcome (e.g. "suite 214 pass, lint clean"). A fix spanning multiple files is **one row with one `#`** (e.g. `controller.rb:88 (+test)`) -- never duplicate the number across rows. Flag green-but-unverifiable edits (auth/contract/concurrency) inline in the `Fix` cell, e.g. `(security-posture — verify in diff)`. Applied findings keep their stable `#` and appear only here, not in the severity tables. Omit in `mode:agent` and when nothing was applied
+- **Applied section (default mode only)** -- when the review applied fixes (Stage 5c), list them first, before the severity tables, as `# | File | Fix | Reviewer` followed by a one-line validation outcome (e.g. "suite 214 pass, lint clean") and the **commit status** — committed as an isolated `fix(review): …` commit when the working tree was clean before the review, or left uncommitted (for the user's commit) when it was already dirty. A fix spanning multiple files is **one row with one `#`** (e.g. `controller.rb:88 (+test)`) -- never duplicate the number across rows. Flag green-but-unverifiable edits (auth/contract/concurrency) inline in the `Fix` cell, e.g. `(security-posture — verify in diff)`. Applied findings keep their stable `#` and appear only here, not in the severity tables. Omit in `mode:agent` and when nothing was applied
 - **Actionable Findings section** -- include when the actionable queue is non-empty (findings for the caller to handle)
 - **Pre-existing section** -- separate table, no confidence column (these are informational)
 - **Learnings & Past Solutions section** -- results from ce-learnings-researcher, with links to docs/solutions/ files
