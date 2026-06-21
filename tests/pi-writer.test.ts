@@ -149,7 +149,7 @@ describe("writePiBundle", () => {
     const agentsPath = path.join(outputRoot, "AGENTS.md")
     const agentsContent = await fs.readFile(agentsPath, "utf8")
     expect(agentsContent).toContain("BEGIN COMPOUND PI TOOL MAP")
-    expect(agentsContent).not.toContain("subagent extension")
+    expect(agentsContent).toContain("pi-subagents")
     expect(agentsContent).toContain("pi-ask-user")
   })
 

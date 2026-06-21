@@ -2,7 +2,7 @@ import path from "path"
 import { backupFile, copySkillDir, ensureDir, pathExists, readJson, sanitizePathName, writeJson, writeText } from "../utils/files"
 import { transformContentForKiro } from "../converters/claude-to-kiro"
 import type { KiroBundle } from "../types/kiro"
-import { cleanupStaleSkillDirs, cleanupStaleAgents, isLegacySkillArtifactOwned } from "../utils/legacy-cleanup"
+import { cleanupStaleSkillDirs, cleanupStaleAgents, isLegacyAgentArtifactOwned, isLegacySkillArtifactOwned } from "../utils/legacy-cleanup"
 import { getLegacyKiroArtifacts } from "../data/plugin-legacy-artifacts"
 import { moveLegacyArtifactToBackup, sanitizeManagedPluginName } from "./managed-artifacts"
 
@@ -145,6 +145,8 @@ async function cleanupKnownLegacyKiroArtifacts(
     await moveLegacyArtifactToBackup(paths.managedDir, "skills", paths.skillsDir, skillName, "Kiro skill")
   }
   for (const agentName of legacyArtifacts.agents) {
+    const configPath = path.join(paths.agentsDir, `${agentName}.json`)
+    if (!(await isLegacyAgentArtifactOwned(configPath, agentName, ".json"))) continue
     await moveLegacyArtifactToBackup(paths.managedDir, "agents", paths.agentsDir, `${agentName}.json`, "Kiro agent")
     await moveLegacyArtifactToBackup(
       paths.managedDir,

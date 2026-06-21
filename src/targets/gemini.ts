@@ -3,7 +3,7 @@ import { backupFile, copySkillDir, ensureDir, pathExists, readJson, sanitizePath
 import { transformContentForGemini } from "../converters/claude-to-gemini"
 import type { GeminiBundle } from "../types/gemini"
 import { getLegacyGeminiArtifacts } from "../data/plugin-legacy-artifacts"
-import { isLegacySkillArtifactOwned } from "../utils/legacy-cleanup"
+import { isLegacyAgentArtifactOwned, isLegacySkillArtifactOwned } from "../utils/legacy-cleanup"
 import {
   archiveLegacyInstallManifestIfOwned,
   cleanupCurrentManagedDirectory,
@@ -141,6 +141,8 @@ async function cleanupKnownLegacyGeminiArtifacts(
     await moveLegacyArtifactToBackup(paths.managedDir, "skills", paths.skillsDir, skillName, "Gemini skill")
   }
   for (const agentPath of legacyArtifacts.agents) {
+    const legacyAgentPath = path.join(paths.agentsDir, agentPath)
+    if (!(await isLegacyAgentArtifactOwned(legacyAgentPath, path.basename(agentPath, ".md"), ".md"))) continue
     await moveLegacyArtifactToBackup(paths.managedDir, "agents", paths.agentsDir, agentPath, "Gemini agent")
   }
   for (const commandPath of legacyArtifacts.commands) {

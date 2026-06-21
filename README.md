@@ -234,6 +234,12 @@ Install Compound Engineering as a Pi package from this repository:
 pi install git:github.com/EveryInc/compound-engineering-plugin
 ```
 
+Required companion for CE workflows that dispatch reviewer, research, or implementation subagents:
+
+```bash
+pi install npm:pi-subagents
+```
+
 Recommended companion for richer blocking questions:
 
 ```bash

@@ -15,6 +15,10 @@ type CursorPluginManifest = {
   description?: string
 }
 
+type RootPackageJson = {
+  version: string
+}
+
 type CodexPluginManifest = {
   name: string
   version: string
@@ -162,12 +166,14 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
   const compoundDescription = await buildCompoundEngineeringDescription(root)
   const compoundMarketplaceDescription = await buildCompoundEngineeringMarketplaceDescription(root)
 
+  const compoundPackagePath = path.join(root, "package.json")
   const compoundClaudePath = path.join(root, ".claude-plugin", "plugin.json")
   const compoundCursorPath = path.join(root, ".cursor-plugin", "plugin.json")
   const compoundGeminiPath = path.join(root, "gemini-extension.json")
   const marketplaceClaudePath = path.join(root, ".claude-plugin", "marketplace.json")
   const marketplaceCursorPath = path.join(root, ".cursor-plugin", "marketplace.json")
 
+  const compoundPackage = await readJson<RootPackageJson>(compoundPackagePath)
   const compoundClaude = await readJson<ClaudePluginManifest>(compoundClaudePath)
   const compoundCursor = await readJson<CursorPluginManifest>(compoundCursorPath)
   const marketplaceClaude = await readJson<MarketplaceManifest>(marketplaceClaudePath)
@@ -176,6 +182,11 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
     versions["compound-engineering"],
     compoundClaude.version,
   )
+
+  updates.push({
+    path: compoundPackagePath,
+    changed: compoundPackage.version !== expectedCompoundVersion,
+  })
 
   let changed = false
   if (compoundClaude.version !== expectedCompoundVersion) {

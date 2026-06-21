@@ -25,10 +25,14 @@ const PI_AGENTS_BLOCK_BODY = `## Compound Engineering (Pi compatibility)
 
 This block is managed by compound-plugin.
 
-Recommended Pi companion extension:
+Required Pi companion for multi-agent CE workflows:
+- \`pi-subagents\` provides the subagent primitive used by ce-code-review, ce-doc-review, ce-plan, and ce-work
+
+Recommended Pi companion:
 - \`pi-ask-user\` (by edlsh) provides the \`ask_user\` tool; skills fall back to numbered options in chat when it is missing
 
 Install with:
+  pi install npm:pi-subagents
   pi install npm:pi-ask-user
 `
 

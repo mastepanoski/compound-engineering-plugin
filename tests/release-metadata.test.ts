@@ -40,6 +40,10 @@ async function makeFixtureRoot(): Promise<string> {
     JSON.stringify({ mcpServers: { context7: { command: "ctx7" } } }, null, 2),
   )
   await writeFile(
+    path.join(root, "package.json"),
+    JSON.stringify({ version: "2.42.0" }, null, 2),
+  )
+  await writeFile(
     path.join(root, ".claude-plugin", "plugin.json"),
     JSON.stringify({ version: "2.42.0", description: "old" }, null, 2),
   )
@@ -155,6 +159,24 @@ describe("release metadata", () => {
     // Crucially: write: true did NOT bump the Codex version to match Claude.
     // release-please owns version writes via extra-files; syncReleaseMetadata detects but does not correct.
     const afterContents = JSON.parse(await Bun.file(codexPath).text())
+    expect(afterContents.version).toBe("2.41.0")
+  })
+
+  test("reports package.json version drift without auto-correcting", async () => {
+    const root = await makeFixtureRoot()
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ version: "2.41.0" }, null, 2),
+    )
+
+    const result = await syncReleaseMetadata({ root, write: true })
+    const packagePath = path.join(root, "package.json")
+    const packageUpdate = result.updates.find((u) => u.path === packagePath)
+
+    expect(packageUpdate).toBeDefined()
+    expect(packageUpdate!.changed).toBe(true)
+
+    const afterContents = JSON.parse(await Bun.file(packagePath).text())
     expect(afterContents.version).toBe("2.41.0")
   })
 

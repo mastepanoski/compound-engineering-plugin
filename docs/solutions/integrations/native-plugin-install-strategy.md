@@ -93,10 +93,11 @@ pi install git:github.com/EveryInc/compound-engineering-plugin
 Recommended companion:
 
 ```bash
+pi install npm:pi-subagents
 pi install npm:pi-ask-user
 ```
 
-`pi-ask-user` is only for richer blocking question UX. CE does not require a separate Pi subagent package in its install instructions.
+`pi-subagents` is required for CE workflows that dispatch reviewer, research, or implementation subagents. `pi-ask-user` is only for richer blocking question UX.
 
 For local development:
 
