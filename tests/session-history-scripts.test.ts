@@ -1674,6 +1674,36 @@ describe("discover-sessions", () => {
     expect(files).toEqual([sessionPath])
   })
 
+  test("--platform pi with PI_CODING_AGENT_SESSION_DIR searches that directory directly", async () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "pi-home-"))
+    const sessionBase = fs.mkdtempSync(path.join(os.tmpdir(), "pi-sessions-"))
+    const sessionPath = path.join(
+      sessionBase,
+      "2026-04-07T09-00-00-000Z_test.jsonl"
+    )
+    await writeFixture(sessionPath, "pi-session.jsonl")
+
+    const { stdout, stderr, exitCode } = await runDiscover(
+      [
+        "my-repo",
+        "7",
+        "--cwd",
+        "/Users/test/Code/my-repo",
+        "--platform",
+        "pi",
+      ],
+      {
+        HOME: tempHome,
+        PI_CODING_AGENT_SESSION_DIR: sessionBase,
+      }
+    )
+
+    expect(exitCode).toBe(0)
+    expect(stderr).toBe("")
+    const files = stdout.trim().split("\n").filter((l) => l.trim())
+    expect(files).toEqual([sessionPath])
+  })
+
   test("--platform pi honors PI_CODING_AGENT_SESSION_DIR", async () => {
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "pi-home-"))
     const sessionBase = fs.mkdtempSync(path.join(os.tmpdir(), "pi-sessions-"))

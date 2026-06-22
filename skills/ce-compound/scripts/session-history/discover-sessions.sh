@@ -80,6 +80,20 @@ discover_pi() {
     local base="${PI_CODING_AGENT_SESSION_DIR:-$agent_dir/sessions}"
     [ -d "$base" ] || return 0
 
+    # Pi's explicit session-dir override stores session files directly in the
+    # supplied directory. The cwd filter later reads each header and keeps only
+    # sessions for the active repo.
+    if [ -n "${PI_CODING_AGENT_SESSION_DIR:-}" ]; then
+        find "$base" -maxdepth 1 -name "*.jsonl" -mtime "-${DAYS}" 2>/dev/null
+        if [ -z "$REPO_CWD" ]; then
+            for dir in "$base"/*"$REPO_NAME"*/; do
+                [ -d "$dir" ] || continue
+                find "$dir" -maxdepth 1 -name "*.jsonl" -mtime "-${DAYS}" 2>/dev/null
+            done
+        fi
+        return 0
+    fi
+
     # Pi stores sessions under --<absolute-cwd-with-slashes-as-hyphens>--.
     # When the caller supplies an exact repo root, probe only that encoded
     # directory so sibling repos like my-repo-old never enter the pipeline.
