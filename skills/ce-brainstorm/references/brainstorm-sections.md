@@ -41,11 +41,11 @@ is a shareable requirements doc, not an agent-scaffolding dump. It includes:
 - `## Product Contract` containing the brainstorm sections below.
 
 Do **not** emit a `## Goal Launch Block` or `## Reader Index`: the launch prompt
-is skill-emitted at handoff, not a doc section, and a two-section requirements
-doc has nothing to route. It also omits empty `Planning Contract`,
-`Implementation Units`, `Verification Contract`, and `Definition of Done`
-sections — empty placeholders make requirements-only docs look executable and
-waste downstream tokens. `ce-plan` adds the Reader Index and those sections when
+is skill-emitted at handoff, not a doc section, and the contract carries no
+Reader Index — consumers wayfind by scanning headings. It also omits empty
+`Planning Contract`, `Implementation Units`, `Verification Contract`, and
+`Definition of Done` sections — empty placeholders make requirements-only docs
+look executable and waste downstream tokens. `ce-plan` adds those sections when
 it enriches the same file in place. The next step (planning) is conveyed by the
 Phase 4 handoff menu, not by a section in the doc.
 

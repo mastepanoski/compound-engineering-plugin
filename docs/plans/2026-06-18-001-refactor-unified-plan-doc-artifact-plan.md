@@ -34,7 +34,7 @@ The proposed change makes "plan" mean the whole decision artifact: product contr
 
 **Agent execution quality**
 
-- R5. The unified document includes a compact `Reader Index` and `Goal Capsule` near the top so downstream agents can route themselves without reading the whole file.
+- R5. The unified document uses stable section headings and a `Goal Capsule` near the top so downstream agents wayfind by heading scan and route themselves without reading the whole file.
 - R6. The document includes a `Definition of Done` section with global and per-unit completion criteria suitable for `/goal` or equivalent long-running workflows.
 - R7. The launch prompt for an artifact's current readiness is **emitted by the skill at handoff** — printed as a copyable `/goal` prompt on hosts where `/goal` is user-typed (Claude Code), or started directly via a callable goal tool (Codex `create_goal`). It is **not** baked into the document as a section, so it never goes stale as the template evolves. The single source is `ce-work`'s `references/execution-engines.md`.
 - R7a. `ce-plan` may offer to kick off that launch prompt only when the output has a concrete goal-shaped deliverable, done criteria, and stop condition. Implementation-ready code plans get implementation goals; approach-plans and "plan for a plan" outputs may get planning or knowledge-work goals, but never a code-execution goal unless the accepted deliverable is itself a software implementation plan.
@@ -50,7 +50,7 @@ The proposed change makes "plan" mean the whole decision artifact: product contr
 - R10c. `ce-work` supports a caller-owned-tail mode for LFG: it implements and verifies the plan, then returns control so LFG can run its larger simplify/review/test/PR/CI pipeline without duplicating `ce-work`'s standalone handoff.
 - R10d. `ce-work` treats dynamic workflows / ultracode-style orchestration as a distinct execution engine from goal-mode when the host platform supports it.
 - R10e. Adjacent skills with plan discovery or brainstorm handoffs, including `ce-work-beta`, `ce-ideate`, and `ce-riffrec-feedback-analysis`, are either updated or explicitly documented as out of scope with a guard.
-- R11. Tests enforce the new single-artifact contract, legacy compatibility, reader-index requirements, skill-emitted launch behavior, and downstream discovery behavior.
+- R11. Tests enforce the new single-artifact contract, legacy compatibility, heading-scan wayfinding, skill-emitted launch behavior, and downstream discovery behavior.
 
 ---
 
@@ -90,7 +90,6 @@ execution: code # optional; same semantics as today
 
 # Example capability - Plan
 
-## Reader Index            # implementation-ready only
 ## Goal Capsule
 ## Product Contract
 ## Planning Contract       # implementation-ready only
@@ -101,7 +100,7 @@ execution: code # optional; same semantics as today
 ## Appendix
 ```
 
-There is no `Goal Launch Block` section. The launch prompt is skill-emitted at handoff (copyable `/goal` on Claude Code, `create_goal` on Codex) from `ce-work`'s `references/execution-engines.md`, so it stays current instead of being frozen into each artifact. A requirements-only artifact is slim: `Goal Capsule` + `Product Contract` only (it also omits the `Reader Index`, since there is nothing to route across two sections); `ce-plan` adds the `Reader Index` and the implementation sections when it enriches in place.
+There is no `Goal Launch Block` section, and no `Reader Index`: the launch prompt is skill-emitted at handoff (copyable `/goal` on Claude Code, `create_goal` on Codex) from `ce-work`'s `references/execution-engines.md`, and consumers wayfind by scanning the stable section headings (markdown) or `<h1>`–`<h3>`/anchor ids (HTML) rather than from an in-doc index. A requirements-only artifact is slim: `Goal Capsule` + `Product Contract` only; `ce-plan` adds the implementation sections when it enriches in place.
 
 `artifact_readiness: requirements-only` means the artifact is not yet executable by `ce-work`. `artifact_readiness: implementation-ready` means `ce-plan` has supplied implementation units, verification, and DoD material. These are document-readiness values, not work-progress values; tests should reject progress words such as `active`, `in_progress`, `completed`, or `done`.
 
@@ -119,7 +118,6 @@ The unified artifact contract needs a stable section registry so consumers know 
 
 | Logical section | Markdown heading | HTML id | Grep / selector hint |
 |---|---|---|---|
-| Reader Index | `## Reader Index` | `reader-index` | `^## Reader Index$` / `#reader-index` |
 | Goal Capsule | `## Goal Capsule` | `goal-capsule` | `^## Goal Capsule$` / `#goal-capsule` |
 | Product Contract | `## Product Contract` | `product-contract` | `^## Product Contract$` / `#product-contract` |
 | Product Requirements | `### Requirements` under Product Contract | `product-requirements` | nearest `### Requirements` after Product Contract / `#product-requirements` |
@@ -134,7 +132,7 @@ HTML rendering must make these ids visible as normal anchors on section elements
 
 ### Reader Strategy
 
-The document does not teach efficient reading by itself. Consuming skills must carry the read algorithm before they open the file. The `Reader Index` is a stable extraction target, not the primary instruction source.
+The document does not teach efficient reading by itself. Consuming skills must carry the read algorithm before they open the file. The stable section **headings** (markdown) and anchor ids (HTML) are the extraction target; the consumer scans them to wayfind rather than reading the whole file.
 
 Every consuming skill that accepts a unified plan should use this order:
 
@@ -155,14 +153,14 @@ Role-specific defaults:
 
 | Consumer | First sections to read | Skip by default | Escalate when |
 |---|---|---|---|
-| `ce-plan` enriching a skeleton | Metadata, Reader Index, Goal Capsule, full Product Contract, Open Questions, cited Sources | Appendix details and unrelated legacy docs | Product Contract conflicts with repo research or planning needs missing product decisions |
-| `ce-work` executing | Metadata, Reader Index, Goal Capsule, Definition of Done, Verification Contract, Implementation Units heading list, first candidate U-ID | Appendix, full Product Contract, unrelated U-IDs | Plan is requirements-only, active unit references an R/F/AE/KTD not yet read, verification cannot be assessed, or no supported execution engine is available |
+| `ce-plan` enriching a skeleton | Metadata, Goal Capsule, full Product Contract, Open Questions, cited Sources | Appendix details and unrelated legacy docs | Product Contract conflicts with repo research or planning needs missing product decisions |
+| `ce-work` executing | Metadata, Goal Capsule, Definition of Done, Verification Contract, Implementation Units heading list, first candidate U-ID | Appendix, full Product Contract, unrelated U-IDs | Plan is requirements-only, active unit references an R/F/AE/KTD not yet read, verification cannot be assessed, or no supported execution engine is available |
 | `lfg` pipeline | Metadata, artifact readiness, execution mode, plan path, Definition of Done availability | Interactive menus, HTML artifacts, universal/approach outputs unless explicitly pipeline-safe | `ce-plan` did not produce an implementation-ready code plan, no plan path is discoverable, or `ce-work` cannot be invoked |
-| `ce-doc-review` | Metadata, Reader Index, Goal Capsule, then reviewer-specific section slices | Sending the full document to every persona | A consistency reviewer needs cross-section trace or a section slice is insufficient |
+| `ce-doc-review` | Metadata, Goal Capsule, then reviewer-specific section slices | Sending the full document to every persona | A consistency reviewer needs cross-section trace or a section slice is insufficient |
 | `ce-code-review` | Metadata, Product Contract > Requirements, Verification Contract, Definition of Done, implemented U-IDs from PR body or branch context | Full plan body and appendices | Requirements are nested unexpectedly or PR claims work outside cited U-IDs |
 | `ce-proof` | Metadata and title only for publishing label, then full file as publish payload | None for upload payload | Publishing label or format cannot be determined |
 
-`Reader Index` should therefore be compact and extractable, but it is not enough on its own. The skills must know to locate it with grep/heading scans before doing expensive full reads.
+Wayfinding is size-aware: a short plan (lightweight or requirements-only) can be read in full, but for a long implementation-ready plan the skills must locate sections with heading/anchor scans and read only the needed ranges before doing expensive full reads.
 
 For `ce-work`, the same rule must apply to subagent dispatch. The parent should pass the plan path plus a compact packet containing Goal Capsule, Definition of Done, the selected U-ID section, and any referenced R/F/AE/KTD excerpts. It should not send "read the whole plan file" as the default worker prompt for unified artifacts.
 
@@ -197,7 +195,7 @@ Claude Code launch decision for generated docs:
 | Large fan-out plan with many independent U-IDs or broad codebase sweep | `ultracode:` dynamic workflow | Workflow scripts hold branching, loops, and intermediate results outside the main context and can coordinate many agents. |
 | Hard planning/research artifact needing several independent angles before committing | `ultracode:` dynamic workflow | Workflows can cross-check findings and synthesize competing drafts before reporting. |
 | LFG/autopilot pipeline | LFG -> `ce-work mode:caller-owned-tail` | LFG owns the outer shipping tail; `ce-work` owns implementation strategy. |
-| Host without callable/top-level goal or workflow support | `ce-work` fallback prompt | Preserve the same Reader Index / DoD / U-ID discipline without relying on unavailable host features. |
+| Host without callable/top-level goal or workflow support | `ce-work` fallback prompt | Preserve the same heading-scan / DoD / U-ID discipline without relying on unavailable host features. |
 
 The generated document should name one recommended Claude Code launch path, not present `/goal` and `ultracode:` as equally likely choices. It may include the non-recommended alternative under "Advanced / large-scale option" only when the plan shape plausibly warrants it.
 
@@ -224,7 +222,7 @@ For `artifact_readiness: implementation-ready` with `execution: code`, the emitt
 ```text
 /goal Implement docs/plans/example-plan.md through its Definition of Done.
 
-First read: Reader Index, Goal Capsule, Definition of Done, and the Implementation Units heading map. Work unit-by-unit. For each U-ID, read only that unit plus referenced R/F/AE/KTD sections. Track progress outside the doc.
+First read: Goal Capsule, Definition of Done, and the Implementation Units heading map (scan headings to find sections; do not read the whole plan). Work unit-by-unit. For each U-ID, read only that unit plus referenced R/F/AE/KTD sections. Track progress outside the doc.
 
 This top-level goal owns implementation quality gates. Run simplification and code review when the plan or diff meets the repo's normal criteria, apply eligible fixes, and surface any residual findings. Do not open a PR unless the prompt explicitly requests a shipping goal.
 
@@ -236,7 +234,7 @@ When a skill caller needs an internal implementation engine, use a shorter imple
 ```text
 /goal Implement docs/plans/example-plan.md as an implementation-only engine for the owning workflow.
 
-Read Reader Index, Goal Capsule, Definition of Done, and active U-IDs. Complete implementation and local verification only. Do not run simplification, code review, PR creation, CI watching, or final handoff; return a summary with changed files, U-IDs completed, verification results, and blockers so the owning workflow can run its tail.
+Read Goal Capsule, Definition of Done, and active U-IDs (scan headings to find them). Complete implementation and local verification only. Do not run simplification, code review, PR creation, CI watching, or final handoff; return a summary with changed files, U-IDs completed, verification results, and blockers so the owning workflow can run its tail.
 ```
 
 Fallback when callable goal-mode is unavailable:
@@ -244,7 +242,7 @@ Fallback when callable goal-mode is unavailable:
 ```text
 Use ce-work on docs/plans/example-plan.md.
 
-First classify artifact_readiness and execution mode. If implementation-ready code, read Reader Index, Goal Capsule, Definition of Done, and the Implementation Units heading map before choosing inline, subagent, or dynamic-workflow execution. Preserve U-ID references, read only active-unit sections plus cited R/F/AE/KTD excerpts, and finish through the owning workflow's tail profile.
+First classify artifact_readiness and execution mode. If implementation-ready code, scan headings and read Goal Capsule, Definition of Done, and the Implementation Units heading map (not the whole doc) before choosing inline, subagent, or dynamic-workflow execution. Preserve U-ID references, read only active-unit sections plus cited R/F/AE/KTD excerpts, and finish through the owning workflow's tail profile.
 ```
 
 Keep each prompt under 4,000 characters. Put the literal path in the prompt. Include an action verb, the artifact readiness assumption, the tail ownership profile, the read order, the unit strategy, and an evaluator-visible stop condition. Goal prompts should require the agent to surface verification results in the transcript before declaring completion. When goal-mode is unavailable, the fallback prompt should preserve the same read order and tail ownership semantics through `ce-work`.
@@ -283,19 +281,6 @@ Approach-plans are especially good goal inputs when the expensive work is cognit
 
 Use the approach-plan as process authority. Produce the named deliverable only. Do not implement code. Stop when the deliverable's acceptance criteria are satisfied or when a blocker invalidates the approach.
 ```
-
-### Reader Index
-
-Compact routing table. Required fields:
-
-| Field | Purpose |
-|---|---|
-| Artifact readiness | Says whether this is requirements-only or implementation-ready. |
-| Product contract source | Says whether product scope came from `ce-brainstorm`, `ce-plan` bootstrap, or a legacy origin path. |
-| Read first | Points every agent to `Goal Capsule`; points to `Definition of Done` only when present. |
-| Implementer path | Names the sections `ce-work` and worker agents must read. |
-| Reviewer path | Names the sections reviewers should inspect first. |
-| Token notes | Names sections safe to skip unless needed, especially appendices. |
 
 ### Goal Capsule
 
@@ -406,13 +391,13 @@ New unified artifacts contain **no** launch-prompt section — the launch prompt
   - Modify: `skills/ce-plan/references/markdown-rendering.md`
   - Modify: `skills/ce-plan/references/html-rendering.md`
   - Mirror rendering changes into `ce-brainstorm` and `ce-ideate` reference copies if parity tests still require them.
-- **Approach:** Introduce `artifact_contract: ce-unified-plan/v1`, `artifact_readiness`, `product_contract_source`, `Reader Index`, `Goal Capsule`, `Product Contract`, `Planning Contract`, `Verification Contract`, and `Definition of Done` as the new contract (the launch prompt is skill-emitted, not a section). Keep no-status language, and define readiness as document completeness rather than work progress.
+- **Approach:** Introduce `artifact_contract: ce-unified-plan/v1`, `artifact_readiness`, `product_contract_source`, `Goal Capsule`, `Product Contract`, `Planning Contract`, `Verification Contract`, and `Definition of Done` as the new contract (the launch prompt is skill-emitted and consumers wayfind by heading scan, so neither is a section). Keep no-status language, and define readiness as document completeness rather than work progress.
 - **Test scenarios:**
   - Contract tests detect required metadata fields and reject `status:`.
   - Contract tests reject progress-like readiness values such as `active`, `in_progress`, `completed`, and `done`.
   - Contract tests require the Section ID Registry in the skill/reference instructions.
   - Rendering tests require visible metadata and navigation for HTML.
-  - HTML rendering tests require stable ids such as `reader-index`, `goal-capsule`, `product-contract`, `implementation-units`, and `definition-of-done`.
+  - HTML rendering tests require stable ids such as `goal-capsule`, `product-contract`, `implementation-units`, and `definition-of-done`.
   - Markdown tests require pure markdown, top-loaded reader sections, and no hidden machine copy.
 - **Verification:** Tests identify the unified contract and no longer require a standalone requirements filename for new brainstorm outputs.
 
@@ -425,13 +410,13 @@ New unified artifacts contain **no** launch-prompt section — the launch prompt
   - Modify: `skills/ce-brainstorm/references/handoff.md`
   - Modify: `skills/ce-brainstorm/references/synthesis-summary.md`
   - Modify tests under `tests/skills/ce-brainstorm-*`
-- **Approach:** Phase 3 writes `docs/plans/YYYY-MM-DD-NNN-<type>-<topic>-plan.<md|html>` with `artifact_readiness: requirements-only` and `product_contract_source: ce-brainstorm`. It fills `Reader Index`, `Goal Capsule`, and `Product Contract`, omits empty plan-only sections, and routes next steps to `ce-plan` with the same path.
+- **Approach:** Phase 3 writes `docs/plans/YYYY-MM-DD-NNN-<type>-<topic>-plan.<md|html>` with `artifact_readiness: requirements-only` and `product_contract_source: ce-brainstorm`. It fills `Goal Capsule` and `Product Contract`, omits empty plan-only sections, and routes next steps to `ce-plan` with the same path.
 - **Test scenarios:**
   - `output:md` writes a markdown unified plan skeleton under `docs/plans/`.
   - `output:html` writes an HTML unified plan skeleton with visible readiness metadata.
   - Handoff to `ce-plan` passes the plan path, not a requirements path.
   - Requirements-only skeletons do not claim to be executable.
-  - Requirements-only Reader Index does not point implementers at missing `Definition of Done` or `Implementation Units` sections.
+  - Requirements-only artifacts do not point implementers at missing `Definition of Done` or `Implementation Units` sections.
   - Requirements-only artifacts emit no launch-prompt section; the next step (ce-plan enrichment) is conveyed by the handoff menu, not the doc.
   - `Build it now` / direct-to-`ce-work` handoff is hidden unless a requirements-only artifact is explicitly deemed small enough to skip planning and the needed DoD is present in chat or the artifact.
 - **Verification:** New tests fail if `ce-brainstorm` points new outputs at `docs/brainstorms/*-requirements.*`.
@@ -446,7 +431,7 @@ New unified artifacts contain **no** launch-prompt section — the launch prompt
   - Modify: `skills/ce-plan/references/deepening-workflow.md`
   - Modify: `skills/ce-plan/references/plan-handoff.md`
   - Modify tests under `tests/skills/ce-plan-*`
-- **Approach:** Phase 0 searches for explicit paths first, then recent unified plans with `artifact_readiness: requirements-only`, then legacy `docs/brainstorms/*-requirements.*`. When enriching, `ce-plan` updates `artifact_readiness: implementation-ready`, adds `Reader Index` and fills `Planning Contract`, `Implementation Units`, `Verification Contract`, and `Definition of Done`, and preserves R/A/F/AE IDs.
+- **Approach:** Phase 0 searches for explicit paths first, then recent unified plans with `artifact_readiness: requirements-only`, then legacy `docs/brainstorms/*-requirements.*`. When enriching, `ce-plan` updates `artifact_readiness: implementation-ready`, fills `Planning Contract`, `Implementation Units`, `Verification Contract`, and `Definition of Done`, and preserves R/A/F/AE IDs.
 - **Test scenarios:**
   - Direct `ce-plan` creates a complete unified plan without an origin doc.
   - `ce-plan <unified-plan-path>` updates that file rather than creating a duplicate.
@@ -473,12 +458,12 @@ New unified artifacts contain **no** launch-prompt section — the launch prompt
   - Modify or document exception: `skills/ce-riffrec-feedback-analysis/references/extensive-analysis.md`
   - Modify or document exception: `skills/ce-riffrec-feedback-analysis/scripts/analyze_riffrec_zip.py`
   - Modify related docs and tests.
-- **Approach:** `ce-work` should route `artifact_readiness: requirements-only` files to `ce-plan` when explicitly receiving a plan, and blank `ce-work` should stop rather than silently falling back when the newest plan artifact is requirements-only, knowledge-work, approach-plan, or otherwise not implementation-ready code. For implementation-ready unified plans, `ce-work` must replace its current full-document-first read with the metadata, heading-map, Reader Index, Goal Capsule, DoD, and active-unit extraction strategy. `ce-work` may also choose a supported goal-mode or dynamic-workflow engine for implementation, but must resume the correct tail after implementation: standalone quality gates in normal use, or caller-owned-tail return when invoked by LFG. `lfg` should verify that `ce-plan` produced an implementation-ready code plan before invoking `ce-work`, pass the exact plan path to `ce-work mode:caller-owned-tail <plan-path>` (or equivalent explicit syntax), and stop with a clear message for requirements-only, universal, answer-seeking, or approach-plan outputs that are not code-executable. `ce-doc-review` should classify unified artifacts by readiness and `product_contract_source`, reviewing Product Contract and Planning Contract with different lenses. HTML unified artifacts should remain report-only or skipped until `ce-doc-review` has a real HTML-safe mutation path; do not claim safe HTML mutation without implementing it. `ce-proof` should publish markdown unified plans only and label them by readiness; HTML unified artifacts stay on the local browser/open path.
+- **Approach:** `ce-work` should route `artifact_readiness: requirements-only` files to `ce-plan` when explicitly receiving a plan, and blank `ce-work` should stop rather than silently falling back when the newest plan artifact is requirements-only, knowledge-work, approach-plan, or otherwise not implementation-ready code. For implementation-ready unified plans, `ce-work` must replace its current full-document-first read with the metadata, heading-map, Goal Capsule, DoD, and active-unit extraction strategy. `ce-work` may also choose a supported goal-mode or dynamic-workflow engine for implementation, but must resume the correct tail after implementation: standalone quality gates in normal use, or caller-owned-tail return when invoked by LFG. `lfg` should verify that `ce-plan` produced an implementation-ready code plan before invoking `ce-work`, pass the exact plan path to `ce-work mode:caller-owned-tail <plan-path>` (or equivalent explicit syntax), and stop with a clear message for requirements-only, universal, answer-seeking, or approach-plan outputs that are not code-executable. `ce-doc-review` should classify unified artifacts by readiness and `product_contract_source`, reviewing Product Contract and Planning Contract with different lenses. HTML unified artifacts should remain report-only or skipped until `ce-doc-review` has a real HTML-safe mutation path; do not claim safe HTML mutation without implementing it. `ce-proof` should publish markdown unified plans only and label them by readiness; HTML unified artifacts stay on the local browser/open path.
 - **Test scenarios:**
   - Blank `ce-work` stops when the newest plan artifact is requirements-only, knowledge-work, approach-plan, or unclassified universal output, unless the user supplied an explicit path or unambiguous branch/keyword match.
   - Explicit `ce-work <requirements-only-plan>` tells the user the plan needs `ce-plan` enrichment.
   - Explicit `ce-work <knowledge-work-plan>` still routes to the existing non-code execution carve-out.
-  - `ce-work` no longer instructs agents to read large unified documents completely before metadata, heading-map, Reader Index, Goal Capsule, DoD, and active-unit extraction.
+  - `ce-work` no longer instructs agents to read large unified documents completely before metadata, heading-map, Goal Capsule, DoD, and active-unit extraction.
   - `ce-work` subagent prompts pass a bounded unit packet rather than only a full plan path when executing unified artifacts.
   - `ce-work` can use a supported goal-mode engine for implementation, then resumes standalone review/simplification/testing/commit/handoff gates when not caller-owned.
   - `ce-work` can use a supported dynamic-workflow engine for large fan-out plans and returns structured results/blockers.
@@ -512,7 +497,7 @@ New unified artifacts contain **no** launch-prompt section — the launch prompt
 - **Approach:** Preserve exclusive output mode. Re-evaluate separate `brainstorm_output` and `plan_output` config keys because both skills now write the same artifact class. Prefer a backward-compatible config migration: keep both keys initially, but document exact enrichment precedence: explicit path format wins for in-place enrichment; explicit `output:` may convert only with a visible old-path/new-path note; pipeline mode may force markdown only by writing the canonical markdown path and leaving the HTML artifact untouched with a clear note. When a conversion or pipeline override creates same-basename `.md` and `.html` siblings, the new artifact path is canonical for later automated discovery, and the old sibling must be marked or reported as non-canonical so `ce-plan`/`ce-work` do not treat both as competing latest plans.
 - **Test scenarios:**
   - HTML unified plans include visible readiness metadata and a navigation region.
-  - Long HTML documents expose anchors for `Reader Index`, `Goal Capsule`, `Product Contract`, `Planning Contract`, `Implementation Units`, and `Definition of Done`.
+  - Long HTML documents expose anchors for `Goal Capsule`, `Product Contract`, `Planning Contract`, `Implementation Units`, and `Definition of Done`.
   - Markdown documents include the same sections without embedded HTML.
   - `brainstorm_output: html` followed by `ce-plan` preserves HTML unless an explicit conversion or pipeline override applies.
   - Explicit `ce-plan output:md <html-unified-plan>` documents the conversion path instead of silently forking canonical artifacts.
@@ -563,7 +548,7 @@ New unified artifacts contain **no** launch-prompt section — the launch prompt
 - **Test scenarios:**
   - New brainstorm output path is `docs/plans/`.
   - Legacy requirements docs still appear in ce-plan discovery guidance.
-  - Unified artifacts include `Goal Capsule` and `Product Contract`, and, when implementation-ready, `Reader Index`, `Verification Contract`, and `Definition of Done`. No `Goal Launch Block` section exists.
+  - Unified artifacts include `Goal Capsule` and `Product Contract`, and, when implementation-ready, `Planning Contract`, `Verification Contract`, and `Definition of Done`. No `Goal Launch Block` or `Reader Index` section exists.
   - The skill-emitted launch prompt stays thin and points to authoritative sections instead of duplicating requirements, verification, or implementation details.
   - Unified artifact consumers define a pre-read algorithm before any full-document read.
   - Heading scans can find major markdown sections and U-ID ranges.
@@ -629,7 +614,7 @@ If any readiness row is not satisfied, the correct goal is not "implement"; it i
 
 - **Risk: requirements-only plans are executed by mistake.** Mitigate with `artifact_readiness`, `ce-work` readiness checks, and tests.
 - **Risk: readiness metadata becomes a disguised mutable status field.** Mitigate by documenting readiness as artifact completeness, not work progress, and keeping "no `status:`" tests.
-- **Risk: unified docs become too large for downstream agents.** Mitigate with mandatory `Reader Index`, `Goal Capsule`, self-contained U-IDs, and appendix routing.
+- **Risk: unified docs become too large for downstream agents.** Mitigate with stable headings for heading-scan wayfinding, a top-loaded `Goal Capsule`, self-contained U-IDs, and appendix routing.
 - **Risk: legacy artifacts break.** Mitigate by keeping legacy discovery and origin resolution indefinitely.
 - **Risk: output config becomes confusing.** Mitigate with a backward-compatible transition and clear docs around format preservation.
 - **Risk: HTML review remains weaker.** Mitigate by documenting the existing markdown-only `ce-doc-review` limitation and not overstating HTML review coverage.
@@ -671,8 +656,8 @@ If any readiness row is not satisfied, the correct goal is not "implement"; it i
 > This is a **pre-contract meta-plan**: it *defines* the `ce-unified-plan/v1`
 > contract and therefore predates it. It uses classic plan sections (Summary,
 > Requirements, Key Technical Decisions, Implementation Units, Definition of
-> Done) rather than the v1 registry (Reader Index / Goal Capsule / Product
-> Contract / Planning Contract / Verification Contract). Under the contract this
+> Done) rather than the v1 registry (Goal Capsule / Product Contract /
+> Planning Contract / Verification Contract). Under the contract this
 > plan landed, the launch prompt is skill-emitted at handoff, not a baked
 > section; the prompt below is retained only as a record of how this plan was
 > executed. The read-first list names the sections this document actually
@@ -751,14 +736,14 @@ Cursor reviewed the reader strategy through an Orca-managed `cursor` worktree an
 
 - Add a Section ID Registry so "what to grep" is mechanical for markdown and HTML.
 - Require consumer SKILL.md files to carry the pre-read algorithm before they open unified artifacts.
-- Make requirements-only Reader Index entries avoid pointing to absent DoD or implementation sections.
+- Make requirements-only artifacts avoid pointing to absent DoD or implementation sections.
 - Ensure `ce-work` subagents receive bounded unit packets instead of only a full plan path.
 - Add explicit `ce-doc-review` unified-artifact classification and section-slice routing.
 - Extend tests around stable section IDs, HTML ids, and no-full-doc-first consumer behavior.
 
 Claude was requested separately through Orca-managed `claude`, but did not produce a review because the session failed with `API Error: 401 Invalid authentication credentials` after workspace trust prompts. No Claude findings were incorporated.
 
-Rationale: Cursor's feedback is consistent with the core design principle: the document can expose stable affordances, but skills must own the reading algorithm. The plan now treats `Reader Index` as an extraction target, not as the source of reader behavior.
+Rationale: Cursor's feedback is consistent with the core design principle: the document can expose stable affordances, but skills must own the reading algorithm. The plan now treats the stable section **headings/anchors** as the extraction target, not an in-doc index, and never the source of reader behavior.
 
 Two additional Codex subagent reviews were run after the LFG/`ce-work` goal-mode discussion:
 

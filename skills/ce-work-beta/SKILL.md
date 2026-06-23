@@ -109,7 +109,7 @@ If it carries `execution: knowledge-work`, this is a **non-code plan** — read 
 
 1. **Read Plan and Clarify** _(skip if arriving from Phase 0 with a bare prompt)_
 
-   - For unified plans, do not read the whole document first. Read metadata, heading/anchor map, Reader Index, Goal Capsule, Verification Contract, Definition of Done, the Implementation Units heading list, and active U-ID sections plus referenced R/F/AE/KTD excerpts. For legacy plans, read the work document completely.
+   - For unified plans, size your read. A short plan (lightweight or requirements-only, a screen or two) can be read in full. For a long implementation-ready plan, do not read the whole document first — it is expensive and unnecessary; build a section map, then read only metadata, Goal Capsule, Verification Contract, Definition of Done, the Implementation Units heading list, and active U-ID sections plus referenced R/F/AE/KTD excerpts. To map: in markdown scan headings (`rg -n '^#{1,3} ' <plan>` — sections plus `### U<N>.` units); in HTML scan the `<h1>`–`<h3>` headings and their anchor ids, matching the stable section names / unit IDs and ignoring wrapper tags. For legacy plans, read the work document completely.
    - Treat the plan as a decision artifact, not an execution script
    - If the plan includes sections such as `Implementation Units`, `Work Breakdown`, `Requirements` (or legacy `Requirements Trace`), `Files`, `Test Scenarios`, or `Verification`, use those as the primary source material for execution
    - Check for `Execution note` on each implementation unit — these carry the plan's execution posture signal for that unit (for example, test-first or characterization-first). Note them when creating tasks.

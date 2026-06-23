@@ -57,7 +57,7 @@ These hold regardless of which skill produced the artifact.
   are ASCII-only.
 - **Unified plan navigation.** Unified plan artifacts include a visible
   navigation region near the top of the document. It links to stable section
-  anchors for `reader-index`, `goal-capsule`,
+  anchors for `goal-capsule`,
   `product-contract`, `planning-contract`, `implementation-units`,
   `verification-contract`, `definition-of-done`, and `appendix` when those
   sections exist. Requirements-only artifacts omit links to absent
@@ -262,7 +262,6 @@ anchor ID and visible heading text:
 
 | Logical section | Required id |
 |---|---|
-| Reader Index | `reader-index` |
 | Goal Capsule | `goal-capsule` |
 | Product Contract | `product-contract` |
 | Product Requirements | `product-requirements` |

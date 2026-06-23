@@ -51,7 +51,6 @@ describe("unified plan artifact contract", () => {
     expect(planSections).toMatch(/no `status` field|no .*status.*field/i)
 
     for (const id of [
-      "reader-index",
       "goal-capsule",
       "product-contract",
       "product-requirements",
@@ -62,8 +61,9 @@ describe("unified plan artifact contract", () => {
     ]) {
       expect(planSections).toContain(id)
     }
-    // The launch prompt is skill-emitted, not a doc section.
+    // The launch prompt is skill-emitted and there is no Reader Index — neither is a doc section.
     expect(planSections).not.toContain("goal-launch-block")
+    expect(planSections).not.toContain("reader-index")
   })
 
   test("brainstorm writes requirements-only unified plan skeletons under docs/plans", () => {
@@ -74,7 +74,7 @@ describe("unified plan artifact contract", () => {
     // Block and no Reader Index (the launch prompt is skill-emitted at handoff).
     expect(brainstormSections).toMatch(/light and standalone-readable/i)
     expect(brainstormSections).toContain("Do **not** emit a `## Goal Launch Block` or `## Reader Index`")
-    expect(brainstormSections).toContain("omits empty `Planning Contract`")
+    expect(brainstormSections).toMatch(/omits empty\s+`Planning Contract`/)
 
     expect(brainstormSkill).toContain("docs/plans/YYYY-MM-DD-NNN-<type>-<topic>-plan")
     expect(brainstormSkill).toContain("artifact_readiness: requirements-only")
@@ -114,7 +114,7 @@ describe("unified plan artifact contract", () => {
     expect(ceWork).toContain("classify `artifact_readiness` before reading the body")
     expect(ceWork).toContain("requirements-only` -> stop")
     expect(ceWork).toContain("Any other readiness value")
-    expect(ceWork).toContain("metadata, build a heading/anchor map")
+    expect(ceWork).toContain("Build a section map")
     expect(ceWork).toContain("Do not send \"read the whole plan\"")
     expect(ceWork).toContain("mode:caller-owned-tail <plan-path>")
     expect(ceWork).toContain("standalone_shipping_skipped: true")
@@ -171,12 +171,19 @@ describe("unified plan artifact contract", () => {
     expect(planHandoff).toMatch(/the launch prompt is generated here at handoff, never written into the doc/i)
   })
 
-  test("consuming skills carry a pre-read / heading-scan algorithm, not full-doc-first", () => {
-    // The reader strategy lives in the skills, not only in the document.
-    // plan-sections names the heading map; ce-work builds it before reading.
-    expect(planSections).toContain("the heading map")
-    expect(planSections).toContain("consuming skills still own the")
+  test("consuming skills carry a size-aware heading-scan algorithm, not full-doc-first", () => {
+    // The reader strategy lives in the skills, not in an in-doc Reader Index.
+    // plan-sections prescribes heading/anchor wayfinding for markdown AND HTML.
+    expect(planSections).toMatch(/consuming skills own the reading\s+algorithm/i)
+    expect(planSections).toMatch(/scan headings/i)
+    expect(planSections).toMatch(/scan the heading elements/i) // explicit HTML wayfinding
+    expect(planSections).toMatch(/do \*\*not\*\* load the entire artifact/i)
+    // Size-aware: a short plan can be read in full.
+    expect(planSections).toMatch(/can just be read in full/i)
+    // ce-work carries the same discipline, markdown + HTML, size-aware.
     expect(ceWork).toContain("do **not** read the whole document first")
+    expect(ceWork).toMatch(/can be read in full/i)
+    expect(ceWork).toMatch(/in \*\*HTML\*\* scan the/i)
   })
 
   test("Verification Contract requires repo-specific commands, not generic run tests", () => {

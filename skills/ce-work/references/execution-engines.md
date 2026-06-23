@@ -26,7 +26,7 @@ When more than one engine is callable, choose by the plan's decomposition shape:
 |---|---|---|
 | Sequential or modest U-ID decomposition; units share files or depend on each other | **Inline / subagent** (default), or a **goal-mode** prompt for sustained focus when callable | The DoD already defines the end condition; ordinary persistence finishes it. |
 | Many independent U-IDs with disjoint file ownership; codebase-wide sweep; large migration; adversarial cross-checking | **Dynamic-workflow** when callable; otherwise parallel subagents | Workflow scripts hold branching, loops, and intermediate worker state outside the main context and coordinate many agents. Prefer this over goal-mode for large fan-out. |
-| Host exposes no callable goal/workflow primitive (e.g. Claude Code in-session) | **Inline / subagent** | Preserve the same Reader Index / DoD / U-ID discipline without relying on unavailable host features. |
+| Host exposes no callable goal/workflow primitive (e.g. Claude Code in-session) | **Inline / subagent** | Preserve the same heading-scan / DoD / U-ID discipline without relying on unavailable host features. |
 
 Recommend exactly one path. Present a non-default engine as an "advanced / large-scale option" only when the plan shape plausibly warrants it — never as an equal coin-flip.
 
@@ -52,7 +52,7 @@ Copyable goal-mode prompt (standalone — emit verbatim, with the literal plan p
 ```text
 /goal Implement <plan-path> through its Definition of Done.
 
-First read: Reader Index, Goal Capsule, Definition of Done, and the Implementation Units heading map. Work unit-by-unit. For each U-ID, read only that unit plus referenced R/F/AE/KTD sections. Track progress outside the doc. Before each major phase and before declaring done, re-open the plan path and re-check the active U-IDs, Verification Contract, and Definition of Done against the current diff — context may have been compacted to a summary that dropped detail.
+First read: Goal Capsule, Definition of Done, and the Implementation Units heading map (do not read the whole plan — scan headings to find sections). Work unit-by-unit. For each U-ID, read only that unit plus referenced R/F/AE/KTD sections. Track progress outside the doc. Before each major phase and before declaring done, re-open the plan path and re-check the active U-IDs, Verification Contract, and Definition of Done against the current diff — context may have been compacted to a summary that dropped detail.
 
 This top-level goal owns implementation quality gates: run simplification and code review when the diff meets the repo's normal criteria, apply eligible fixes, and surface residual findings. Do not open a PR.
 

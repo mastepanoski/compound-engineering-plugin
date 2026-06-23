@@ -171,7 +171,7 @@ Each subagent receives the prompt built from the subagent template included belo
 | `{document_type}` | "requirements", "plan", "unified-requirements", or "unified-plan" from Phase 1 classification |
 | `{document_path}` | Path to the document |
 | `{origin_path}` | Upstream Product Contract provenance extracted once during Phase 1: prefer the document's `origin:` frontmatter field when present; otherwise use `product_contract_source:<value>` when present; otherwise use `none`. Personas that adapt on origin/provenance (product-lens, adversarial, scope-guardian) read this slot to gate technique suppression — they do NOT re-parse frontmatter themselves. |
-| `{document_content}` | Reviewer-specific section slice. For unified artifacts, pass metadata, Reader Index, Goal Capsule, and only the relevant slice: product-lens/adversarial/scope reviewers get Product Contract; feasibility/coherence reviewers also get Planning Contract and active Implementation Units/Verification/DoD when `artifact_readiness: implementation-ready`. For legacy documents, pass the full document. |
+| `{document_content}` | Reviewer-specific section slice. For unified artifacts, pass metadata, Goal Capsule, and only the relevant slice: product-lens/adversarial/scope reviewers get Product Contract; feasibility/coherence reviewers also get Planning Contract and active Implementation Units/Verification/DoD when `artifact_readiness: implementation-ready`. For legacy documents, pass the full document. |
 | `{decision_primer}` | Cumulative prior-round decisions in the current session, or an empty `<prior-decisions>` block on round 1. See "Decision primer" below. |
 
 For legacy requirements/plan documents, pass each subagent the **full

@@ -30,14 +30,15 @@ These hold regardless of which skill produced the artifact.
   breaks within a paragraph, so wrapping never changes the rendered output.
 - **Unified plan sections use stable headings.** For unified plan artifacts,
   render the required sections with exact ASCII headings so agents can find
-  them by heading scan: `## Reader Index`, `## Goal Capsule`,
-  `## Product Contract`, `## Planning Contract`, `## Implementation Units`,
-  `## Verification Contract`, `## Definition of Done`, and optional
-  `## Appendix`. Requirements-only artifacts omit the plan-only sections
-  rather than emitting empty placeholders.
-- **Reader sections are top-loaded.** When present, Reader Index and Goal
-  Capsule appear before Product Contract and long appendices. They are for
-  routing and orientation, not a hidden machine copy.
+  them by heading scan: `## Goal Capsule`, `## Product Contract`,
+  `## Planning Contract`, `## Implementation Units`, `## Verification Contract`,
+  `## Definition of Done`, and optional `## Appendix`. Requirements-only
+  artifacts omit the plan-only sections rather than emitting empty placeholders.
+  These stable headings are the wayfinding contract: consumers scan them
+  (markdown headings, or `<h1>`–`<h3>` / anchor ids in HTML) instead of reading
+  the whole document.
+- **Goal Capsule is top-loaded.** It appears before Product Contract and long
+  appendices for fast orientation — not a hidden machine copy.
 
 ## Format principles
 
@@ -111,8 +112,6 @@ are noisier in raw form and worse for diffs.
 How section types commonly render in markdown. These are patterns, not
 contracts — the agent picks the shape that fits the content.
 
-- **Reader Index** — compact table with section name, heading, and when to
-  read it. Keep it extractable and short.
 - **Goal Capsule** — bullets or a small table for objective, authority,
   execution profile, stop conditions, and tail ownership.
 - **Product Contract** — H2 section containing Summary, Problem Frame,

@@ -70,7 +70,6 @@ skills grep or anchor-scan for these names before reading large bodies.
 
 | Logical section | Markdown heading | HTML id | Reader use |
 |---|---|---|---|
-| Reader Index | `## Reader Index` | `reader-index` | Compact map of where to read first and what to skip |
 | Goal Capsule | `## Goal Capsule` | `goal-capsule` | Objective, authority hierarchy, and stop conditions |
 | Product Contract | `## Product Contract` | `product-contract` | Requirements, actors, flows, acceptance examples, product scope |
 | Product Requirements | `### Requirements` under Product Contract | `product-requirements` | Requirement extraction for review and implementation trace |
@@ -81,18 +80,35 @@ skills grep or anchor-scan for these names before reading large bodies.
 | Appendix | `## Appendix` | `appendix` | Long research, raw notes, or supporting detail |
 
 Requirements-only artifacts are kept light: a Goal Capsule and the Product
-Contract. They omit the Reader Index (nothing to route across two sections)
-and must not point implementers at absent Planning Contract, Implementation
-Units, Verification Contract, or Definition of Done sections. `ce-plan` adds
-the Reader Index and those implementation sections when it enriches to
+Contract. They must not point implementers at absent Planning Contract,
+Implementation Units, Verification Contract, or Definition of Done sections.
+`ce-plan` adds those implementation sections when it enriches to
 implementation-ready. Implementation-ready artifacts include the full registry
 above, except Appendix remains optional.
 
-The document exposes the `Reader Index`; consuming skills still own the
-reading algorithm. A downstream skill should locate metadata, the heading map,
-Reader Index, Goal Capsule, Definition of Done, Verification Contract, and the
-active U-ID before deciding whether to read more. Do not rely on the document
-alone to teach that behavior.
+### Wayfinding: map before reading (size-aware)
+
+The document does not carry a reading guide; consuming skills own the reading
+algorithm. A **short** plan — a lightweight or requirements-only artifact that
+fits in a screen or two — can just be read in full; that is cheaper and simpler
+than scanning and ranging. But an implementation-ready unified plan is often
+long, and HTML output (also supported) is more verbose still, so for anything
+beyond short, do **not** load the entire artifact to find your way around.
+Build a section map first, then read only the ranges the task needs:
+
+- **Markdown:** scan headings to get the section and unit map — e.g.
+  `rg -n '^#{1,3} ' <plan>` (top-level sections plus `### U<N>.` units).
+- **HTML:** scan the heading elements (`<h1>`–`<h3>`) and their anchor ids;
+  match on the section name and ignore the wrapper tags.
+
+In both formats the section **names and anchor ids are the stable contract**
+from the Section ID Registry above (`Goal Capsule`/`goal-capsule`,
+`Verification Contract`/`verification-contract`, `### U<N>.` units, …). Wayfind
+against those registry names, not a brittle tag/format pattern, so the
+instruction survives rendering changes. After mapping, read metadata, then only
+the sections the task needs — e.g. Goal Capsule, the active U-ID plus its cited
+R/F/AE/KTD, Verification Contract, and Definition of Done. Read the Appendix or
+unrelated units only when a section you are already reading cites them.
 
 ## Decide whether a plan doc is warranted at all
 
@@ -149,9 +165,6 @@ message or `docs/solutions/` if they're worth carrying forward.
 When an implementation-ready software plan is warranted, these sections are
 present. They carry the contracts downstream consumers depend on.
 
-- **Reader Index** — compact section map and read strategy for downstream
-  agents. It tells readers which sections to load for common tasks and which
-  large sections to skip until referenced.
 - **Goal Capsule** — objective, authority hierarchy, stop conditions, execution
   profile, and tail ownership. This is the fastest way for an executor to
   avoid drifting from the plan.
