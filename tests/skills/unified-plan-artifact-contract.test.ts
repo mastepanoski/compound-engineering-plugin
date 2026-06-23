@@ -70,13 +70,17 @@ describe("unified plan artifact contract", () => {
     expect(brainstormSections).toContain("artifact_readiness: requirements-only")
     expect(brainstormSections).toContain("product_contract_source: ce-brainstorm")
     expect(brainstormSections).toContain("Goal Launch Block")
-    expect(brainstormSections).toContain("routes to `ce-plan` enrichment, not execution")
+    // Requirements-only is slimmed for standalone readability: single next-step
+    // line, no Reader Index, no execution/stop-condition lecture.
+    expect(brainstormSections).toContain("**single** next-step line")
+    expect(brainstormSections).toContain("Do **not** emit a `## Reader Index`")
+    expect(brainstormSections).toMatch(/process exhaust/i)
     expect(brainstormSections).toContain("omits empty `Planning Contract`")
 
     expect(brainstormSkill).toContain("docs/plans/YYYY-MM-DD-NNN-<type>-<topic>-plan")
     expect(brainstormSkill).toContain("artifact_readiness: requirements-only")
     expect(brainstormSkill).toContain("product_contract_source: ce-brainstorm")
-    expect(brainstormSkill).toContain("not `/ce-work` or `/goal` execution")
+    expect(brainstormSkill).toContain("Do **not** emit a Reader Index")
     expect(brainstormSkill).toContain("new `ce-brainstorm` outputs do not write there")
     expect(brainstormSkill).toContain("non-software route does **not** write `artifact_contract: ce-unified-plan/v1`")
 

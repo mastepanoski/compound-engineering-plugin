@@ -34,17 +34,26 @@ artifact contract:
   For non-code deliverables, follow the universal-brainstorming route instead
   of pretending the artifact is executable code.
 
-A requirements-only unified plan includes:
+A requirements-only unified plan is kept **light and standalone-readable** — it
+is a shareable requirements doc, not an agent-scaffolding dump. It includes:
 
-- `## Goal Launch Block` that routes to `ce-plan` enrichment, not execution.
-- `## Reader Index` that points readers to Goal Capsule and Product Contract,
-  and explicitly does not point them to missing implementation sections.
-- `## Goal Capsule` with objective, product authority, open blockers, and a
-  stop condition: do not execute until `artifact_readiness:
-  implementation-ready`.
+- `## Goal Launch Block` holding a **single** next-step line, e.g.
+  `Next step: run \`/ce-plan <path>\` to add the technical design,
+  implementation units, and verification.` No execution lecture, no
+  "do not run ce-work/goal", no stop-condition prose — `artifact_readiness:
+  requirements-only` in the frontmatter already carries that signal for agents,
+  and restating it as human-facing prose is process exhaust.
+- `## Goal Capsule` with objective, product authority, and open blockers. Do
+  **not** add a "stop condition: do not execute until implementation-ready"
+  line — that duplicates the frontmatter.
 - `## Product Contract` containing the brainstorm sections below.
 
-It omits empty `Planning Contract`, `Implementation Units`, `Verification
+Do **not** emit a `## Reader Index` for a requirements-only plan — with only a
+Goal Capsule and Product Contract there is nothing to route, and the index
+reads as ceremony. `ce-plan` adds the Reader Index (and the implementation
+sections) when it enriches the file to implementation-ready.
+
+It also omits empty `Planning Contract`, `Implementation Units`, `Verification
 Contract`, and `Definition of Done` sections. Empty placeholders make
 requirements-only docs look executable and waste downstream tokens. `ce-plan`
 adds those sections when it enriches the same file in place.
@@ -261,8 +270,11 @@ artifact.
 
 ### Required
 
-- **`title`** — verbatim artifact title. Matches the H1 (markdown) or
-  document `<h1>` (HTML).
+- **`title`** — the artifact's descriptive name with a ` - Plan` suffix
+  (e.g., `Highlighter Tool - Plan`), matching the H1 (markdown) or document
+  `<h1>` (HTML). It is a unified plan at every readiness state, so the title
+  stays stable when `ce-plan` enriches it. Do not put a conventional-commit
+  prefix (`feat:`/`fix:`) in the title — the `type` field carries that.
 - **`type`** — conventional-commit-prefix-aligned classification (`feat`,
   `fix`, `refactor`, `docs`, etc.).
 - **`date`** — creation date in ISO 8601 (`YYYY-MM-DD`), ASCII digits only.

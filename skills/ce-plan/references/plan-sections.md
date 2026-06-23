@@ -81,11 +81,13 @@ skills grep or anchor-scan for these names before reading large bodies.
 | Definition of Done | `## Definition of Done` | `definition-of-done` | Global and per-unit completion criteria |
 | Appendix | `## Appendix` | `appendix` | Long research, raw notes, or supporting detail |
 
-Requirements-only artifacts include the first three sections plus Product
-Contract. They must not point implementers at absent Planning Contract,
-Implementation Units, Verification Contract, or Definition of Done sections.
-Implementation-ready artifacts include the full registry above, except
-Appendix remains optional.
+Requirements-only artifacts are kept light: a single-line Goal Launch Block,
+a Goal Capsule, and the Product Contract. They omit the Reader Index (nothing
+to route across two sections) and must not point implementers at absent
+Planning Contract, Implementation Units, Verification Contract, or Definition
+of Done sections. `ce-plan` adds the Reader Index and those implementation
+sections when it enriches to implementation-ready. Implementation-ready
+artifacts include the full registry above, except Appendix remains optional.
 
 The document exposes the `Reader Index`; consuming skills still own the
 reading algorithm. A downstream skill should locate metadata, the heading map,
@@ -313,8 +315,12 @@ plan.
 
 ### Required
 
-- **`title`** — verbatim plan title. Matches the H1 (markdown) or document
-  `<h1>` (HTML) so file metadata and visible heading don't drift.
+- **`title`** — the plan's descriptive name with a ` - Plan` suffix
+  (e.g., `Highlighter Tool - Plan`), matching the H1 (markdown) or document
+  `<h1>` (HTML) so file metadata and visible heading don't drift. Stable
+  across readiness states (it is a plan at every stage). Do not put a
+  conventional-commit prefix (`feat:`/`fix:`) in the title — the `type` field
+  carries that classification.
 - **`type`** — conventional-commit-prefix-aligned classification (`feat`,
   `fix`, `refactor`, `chore`, `docs`, `perf`, `test`, etc.). Carries the
   intent the eventual commit message should reflect.

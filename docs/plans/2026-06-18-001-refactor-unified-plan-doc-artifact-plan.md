@@ -79,7 +79,7 @@ Required top-level shape for markdown:
 
 ```markdown
 ---
-title: "feat: Example capability"
+title: Example capability - Plan
 type: feat
 date: 2026-06-18
 artifact_contract: ce-unified-plan/v1
@@ -88,7 +88,7 @@ product_contract_source: ce-brainstorm # ce-brainstorm | ce-plan-bootstrap | leg
 execution: code # optional; same semantics as today
 ---
 
-# feat: Example capability
+# Example capability - Plan
 
 ## Goal Launch Block
 ## Reader Index

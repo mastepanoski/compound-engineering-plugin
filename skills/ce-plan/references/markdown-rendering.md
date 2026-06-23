@@ -23,6 +23,11 @@ These hold regardless of which skill produced the artifact.
 - **No HTML mixed in.** Keep the markdown pure. No `<div>`, no `<details>`,
   no inline `<style>`. If a layout idea only works as HTML, defer it to the
   HTML rendering. Markdown stays markdown.
+- **No fixed-width line wrapping.** Do not hard-wrap prose to a column (e.g.
+  80 chars). Write one sentence per line, or let each paragraph flow as a
+  single line. The artifact is read rendered and shared, where fixed wraps add
+  nothing and only produce noisy mid-sentence diffs; markdown joins soft line
+  breaks within a paragraph, so wrapping never changes the rendered output.
 - **Unified plan sections use stable headings.** For unified plan artifacts,
   render the required sections with exact ASCII headings so agents can find
   them by heading scan: `## Goal Launch Block`, `## Reader Index`,
