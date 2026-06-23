@@ -63,13 +63,6 @@ const detectableTools: DetectableTool[] = [
     ],
   },
   {
-    name: "gemini",
-    detectPaths: (home, cwd) => [
-      path.join(cwd, ".gemini"),
-      path.join(home, ".gemini"),
-    ],
-  },
-  {
     name: "antigravity",
     detectPaths: (home, cwd) => [
       path.join(cwd, ".agy"),
