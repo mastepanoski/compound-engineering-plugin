@@ -36,21 +36,21 @@ The proposed change makes "plan" mean the whole decision artifact: product contr
 
 - R5. The unified document includes a compact `Reader Index` and `Goal Capsule` near the top so downstream agents can route themselves without reading the whole file.
 - R6. The document includes a `Definition of Done` section with global and per-unit completion criteria suitable for `/goal` or equivalent long-running workflows.
-- R7. The document includes a top-loaded `Goal Launch Block` that contains the right next prompt for the artifact's current readiness, including a copyable `/goal` prompt when the artifact is implementation-ready.
+- R7. The launch prompt for an artifact's current readiness is **emitted by the skill at handoff** — printed as a copyable `/goal` prompt on hosts where `/goal` is user-typed (Claude Code), or started directly via a callable goal tool (Codex `create_goal`). It is **not** baked into the document as a section, so it never goes stale as the template evolves. The single source is `ce-work`'s `references/execution-engines.md`.
 - R7a. `ce-plan` may offer to kick off that launch prompt only when the output has a concrete goal-shaped deliverable, done criteria, and stop condition. Implementation-ready code plans get implementation goals; approach-plans and "plan for a plan" outputs may get planning or knowledge-work goals, but never a code-execution goal unless the accepted deliverable is itself a software implementation plan.
 - R8. Each implementation unit remains self-contained enough that a subagent can execute that unit after reading the `Goal Capsule`, `Definition of Done`, and that unit.
-- R8a. Implementation-ready plan docs include repo-specific verification commands, quality gates, and test scenarios discovered during planning; the `/goal` prompt must not depend on the launching agent already knowing the repo's test commands or review conventions.
+- R8a. Implementation-ready plan docs include repo-specific verification commands, quality gates, and test scenarios discovered during planning; the emitted launch prompt must not depend on the launching agent already knowing the repo's test commands or review conventions.
 
 **Format and workflow compatibility**
 
 - R9. Markdown and HTML output modes remain supported as exclusive alternatives, with HTML gaining stronger navigation for longer unified artifacts.
 - R10. `ce-work`, `ce-doc-review`, `ce-proof`, `ce-code-review`, and docs pages understand the unified artifact and do not misclassify a requirements-only plan skeleton as execution-ready.
-- R10a. `ce-work` may use goal-mode as an implementation engine when the host platform supports it and the plan has a bounded implementation Goal Launch Block, while retaining `ce-work` ownership of implementation-engine selection, bounded plan reading, unit execution, and standalone quality gates.
+- R10a. `ce-work` may use goal-mode as an implementation engine when the host exposes a callable goal tool (Codex `create_goal`), while retaining `ce-work` ownership of implementation-engine selection, bounded plan reading, unit execution, and standalone quality gates. `create_goal` sets the active objective for the current session, so it is used standalone, never in caller-owned-tail (which must return control).
 - R10b. `lfg` always invokes `ce-work` for implementation after `ce-plan` produces an implementation-ready code plan. `ce-work`, not LFG, decides whether to execute inline, with subagents, or with goal-mode. LFG's changes are limited to unified-plan readiness gating, explicit plan-path handoff, caller-owned-tail invocation, and post-`ce-work` pipeline continuation.
 - R10c. `ce-work` supports a caller-owned-tail mode for LFG: it implements and verifies the plan, then returns control so LFG can run its larger simplify/review/test/PR/CI pipeline without duplicating `ce-work`'s standalone handoff.
 - R10d. `ce-work` treats dynamic workflows / ultracode-style orchestration as a distinct execution engine from goal-mode when the host platform supports it.
 - R10e. Adjacent skills with plan discovery or brainstorm handoffs, including `ce-work-beta`, `ce-ideate`, and `ce-riffrec-feedback-analysis`, are either updated or explicitly documented as out of scope with a guard.
-- R11. Tests enforce the new single-artifact contract, legacy compatibility, reader-index requirements, goal-mode sections, and downstream discovery behavior.
+- R11. Tests enforce the new single-artifact contract, legacy compatibility, reader-index requirements, skill-emitted launch behavior, and downstream discovery behavior.
 
 ---
 
@@ -61,12 +61,12 @@ The proposed change makes "plan" mean the whole decision artifact: product contr
 - **Replace `origin:` with an origin-equivalent only for new unified artifacts:** New brainstorm-sourced unified plans should use `product_contract_source: ce-brainstorm`. Direct `ce-plan` bootstraps should use `product_contract_source: ce-plan-bootstrap`. Legacy plans keep `origin: docs/brainstorms/...`, and readers must continue to resolve that field.
 - **Retain legacy `docs/brainstorms/` as read-only historical input:** Do not migrate or rewrite old brainstorm documents. `ce-plan` and reviewers should search both legacy requirements docs and unified plan docs during the transition.
 - **Top-load the reader contract:** The first screen of the document must tell agents what to read for their role. Long documents are acceptable only if readers can avoid loading appendices and unrelated sections.
-- **Make the document the authority, not the prompt:** The Goal Launch Block is a launcher and router. The durable authority for scope, decisions, verification, and completion must live in the document body, because any goal or agent that reads the plan will use those sections after the initial prompt is forgotten or summarized.
+- **Make the document the authority; emit the launch prompt, don't bake it:** The launch prompt is generated by the skill at handoff (a copyable `/goal` on Claude Code, or `create_goal` on Codex) from a single living template — it is **not** a section in the document. The durable authority for scope, decisions, verification, and completion lives in the document body, because any goal or agent that reads the plan uses those sections after the initial prompt is forgotten or summarized. Baking a rendered prompt into each doc would only let it drift from the current template as the template evolves.
 - **Make completion criteria visible prose, not hidden machine data:** The goal and DoD sections should be normal markdown or visible HTML so humans and agents consume the same authority.
 - **Do not let brainstorm leak implementation detail:** The unified artifact can be plan-shaped before it is implementation-ready, but `ce-brainstorm` still owns product behavior, scope, scenarios, and success criteria only.
 - **Make verification portable:** `ce-plan` must write concrete repo-specific commands and quality gates into the plan from local research, such as `bun test`, `bun run release:validate`, `pytest`, `npm test`, `rails test`, lint/typecheck commands, review requirements, and any skill-specific validation like `skill-creator`. A goal launched weeks later should not need to infer the test suite from scratch.
 - **Gate launch behavior by goal kind:** The unified contract applies to code implementation artifacts. `ce-plan` also supports universal planning, answer-seeking, and approach-altitude "plan for a plan" outputs; those are valid `ce-plan` outcomes and some can be goal-shaped, but they must not invent a third unified readiness state such as `artifact_readiness: approach-plan`. Implementation launch offers require both `execution: code` and `artifact_readiness: implementation-ready`. Planning or knowledge-work launch offers require a saved approach-plan with a concrete deliverable, authority sources, done criteria, and a stop condition.
-- **Treat goal-mode as a capability, not a slash-command assumption:** `/goal` is user-facing on some hosts and is not necessarily a callable subroutine. Skills may use goal-mode as an engine only after probing that the host exposes a callable persistent-objective primitive that can return control and a structured summary; otherwise they must fall back to inline, subagent, or dynamic-workflow execution. For Claude Code skills specifically, do not assume a skill can invoke `/goal` or dynamic workflows inside the current session; emit a copyable command/prompt block instead.
+- **Probe for a callable goal tool, not a command name:** The literal `/goal` slash command is not skill-invocable on any host. Codex exposes a callable goal **tool** (`create_goal`/`update_goal`) that a skill can use to start a goal directly; Claude Code exposes no goal tools at all (confirmed empirically). So skills probe for the tool: where present (Codex), call `create_goal` to start the goal in the current session; where absent (Claude Code), emit a copyable `/goal` prompt for the user to paste, or fall back to inline/subagent/dynamic-workflow execution. `create_goal` sets the current session's active objective — it is not a background worker and returns no awaitable envelope — and the working session marks completion via `update_goal`, so the launching skill does not call `update_goal` itself.
 - **Keep blank discovery conservative:** Blank `ce-work` must not silently skip a newest requirements-only, knowledge-work, or approach-plan artifact to execute an older implementation plan. Auto-execution should require an implementation-ready code artifact or an unambiguous user-supplied path/match.
 - **Keep one owner for the tail:** Simplification, review, PR, and CI can belong to a top-level goal/dynamic workflow, standalone `ce-work`, or LFG, but not more than one at the same time. Launch prompts and skill modes must declare whether they are implementation-only or end-to-end.
 - **Default Claude Code launch to `/goal`, escalate to `ultracode` only by shape:** For implementation-ready unified plans, the normal Claude Code recommendation is `/goal` because the plan already supplies the objective, authority, U-ID decomposition, and DoD. Recommend a dynamic workflow / `ultracode:` prompt only when the plan needs script-owned orchestration: many independent U-IDs, codebase-wide sweeps, large migrations, adversarial cross-checking, or multi-angle research/planning where intermediate results should stay out of the main context.
@@ -90,8 +90,7 @@ execution: code # optional; same semantics as today
 
 # Example capability - Plan
 
-## Goal Launch Block
-## Reader Index
+## Reader Index            # implementation-ready only
 ## Goal Capsule
 ## Product Contract
 ## Planning Contract       # implementation-ready only
@@ -101,6 +100,8 @@ execution: code # optional; same semantics as today
 ## Sources & Research
 ## Appendix
 ```
+
+There is no `Goal Launch Block` section. The launch prompt is skill-emitted at handoff (copyable `/goal` on Claude Code, `create_goal` on Codex) from `ce-work`'s `references/execution-engines.md`, so it stays current instead of being frozen into each artifact. A requirements-only artifact is slim: `Goal Capsule` + `Product Contract` only (it also omits the `Reader Index`, since there is nothing to route across two sections); `ce-plan` adds the `Reader Index` and the implementation sections when it enriches in place.
 
 `artifact_readiness: requirements-only` means the artifact is not yet executable by `ce-work`. `artifact_readiness: implementation-ready` means `ce-plan` has supplied implementation units, verification, and DoD material. These are document-readiness values, not work-progress values; tests should reject progress words such as `active`, `in_progress`, `completed`, or `done`.
 
@@ -118,7 +119,6 @@ The unified artifact contract needs a stable section registry so consumers know 
 
 | Logical section | Markdown heading | HTML id | Grep / selector hint |
 |---|---|---|---|
-| Goal Launch Block | `## Goal Launch Block` | `goal-launch-block` | `^## Goal Launch Block$` / `#goal-launch-block` |
 | Reader Index | `## Reader Index` | `reader-index` | `^## Reader Index$` / `#reader-index` |
 | Goal Capsule | `## Goal Capsule` | `goal-capsule` | `^## Goal Capsule$` / `#goal-capsule` |
 | Product Contract | `## Product Contract` | `product-contract` | `^## Product Contract$` / `#product-contract` |
@@ -156,7 +156,7 @@ Role-specific defaults:
 | Consumer | First sections to read | Skip by default | Escalate when |
 |---|---|---|---|
 | `ce-plan` enriching a skeleton | Metadata, Reader Index, Goal Capsule, full Product Contract, Open Questions, cited Sources | Appendix details and unrelated legacy docs | Product Contract conflicts with repo research or planning needs missing product decisions |
-| `ce-work` executing | Metadata, Reader Index, Goal Capsule, Definition of Done, Verification Contract, Implementation Units heading list, first candidate U-ID, Goal Launch Block when considering goal-mode | Appendix, full Product Contract, unrelated U-IDs | Plan is requirements-only, active unit references an R/F/AE/KTD not yet read, verification cannot be assessed, or no supported execution engine is available |
+| `ce-work` executing | Metadata, Reader Index, Goal Capsule, Definition of Done, Verification Contract, Implementation Units heading list, first candidate U-ID | Appendix, full Product Contract, unrelated U-IDs | Plan is requirements-only, active unit references an R/F/AE/KTD not yet read, verification cannot be assessed, or no supported execution engine is available |
 | `lfg` pipeline | Metadata, artifact readiness, execution mode, plan path, Definition of Done availability | Interactive menus, HTML artifacts, universal/approach outputs unless explicitly pipeline-safe | `ce-plan` did not produce an implementation-ready code plan, no plan path is discoverable, or `ce-work` cannot be invoked |
 | `ce-doc-review` | Metadata, Reader Index, Goal Capsule, then reviewer-specific section slices | Sending the full document to every persona | A consistency reviewer needs cross-section trace or a section slice is insufficient |
 | `ce-code-review` | Metadata, Product Contract > Requirements, Verification Contract, Definition of Done, implemented U-IDs from PR body or branch context | Full plan body and appendices | Requirements are nested unexpectedly or PR claims work outside cited U-IDs |
@@ -171,10 +171,10 @@ Blank `ce-work` discovery must be conservative. The newest matching `docs/plans/
 `ce-work` may choose an implementation engine after it has classified an implementation-ready code plan:
 
 - **Inline/subagent engine:** current default. `ce-work` owns task creation, unit sequencing, subagent dispatch, verification, review escalation, commits, and handoff.
-- **Goal-mode engine:** available only when the host platform exposes a callable persistent-objective primitive that can run to completion, return control, and provide a structured completion summary. On hosts where `/goal` is only a top-level user command, `ce-work` should surface the Goal Launch Block or run inline/subagents instead of trying to call it internally. Claude Code falls in this copy/paste bucket for in-session skills unless a future API exposes command invocation to skills. The goal must not open the PR, finalize the session, or bypass the owning workflow's gates.
+- **Goal-mode engine:** available only when the host exposes a callable goal tool (Codex `create_goal`). `create_goal` sets the active objective for the **current session** — it is not a background worker and returns no awaitable summary — so the session itself continues toward the DoD, and the goal lifecycle marks completion (`ce-work` does not call `update_goal`). Because it steers the current session, goal-mode is for standalone use only, never caller-owned-tail (which must return control). On hosts with no goal tool (Claude Code), `ce-work` emits a copyable `/goal` prompt for the user or runs inline/subagents instead of trying to call anything internally. The goal must not open the PR, finalize the session, or bypass the owning workflow's gates.
 - **Dynamic-workflow engine:** available only when the host platform exposes a callable dynamic workflow / ultracode-style orchestration primitive. Prefer this over goal-mode for large fan-out plans, many independent U-IDs, cross-checking loops, or migrations where intermediate worker state should live outside the main conversation. Claude Code dynamic workflows are triggered by user prompt opt-in such as `ultracode:` or by `/effort ultracode`; skills should output a prompt block for the user rather than trying to start the workflow internally. Dynamic workflows must return structured results and blockers; they must not require mid-run user decisions.
 
-After a goal-mode implementation returns, `ce-work` should inspect the diff and continue at the right tail for its caller. In standalone mode, it continues through its normal post-implementation quality gates and handoff. In LFG caller-owned-tail mode, it performs implementation verification, reports changed files and observed verification, and returns control to LFG before simplify/review/PR/CI. This makes goal-mode a way to get better sustained implementation focus, not a way to skip the owning workflow's finish discipline.
+Because `create_goal` steers the current session rather than dispatching a separate worker, goal-mode is used only in standalone `ce-work`: the session works toward the DoD and then continues through `ce-work`'s normal post-implementation quality gates and handoff. Caller-owned-tail (LFG) never uses `create_goal` — it must return a structured envelope to LFG, so it runs inline/subagents and returns control before simplify/review/PR/CI. Goal-mode is a way to get better sustained implementation focus, not a way to skip the owning workflow's finish discipline.
 
 Caller-owned-tail invocation should be explicit, for example `ce-work mode:caller-owned-tail <plan-path>` or `ce-work caller:lfg <plan-path>`. `ce-work` should parse the mode before normal input triage, execute implementation units and relevant local verification, then return a structured summary containing: status, plan path, changed files beyond the plan, U-IDs attempted/completed, verification commands/results, blockers, whether behavior changed, and confirmation that the standalone shipping tail was skipped.
 
@@ -201,36 +201,25 @@ Claude Code launch decision for generated docs:
 
 The generated document should name one recommended Claude Code launch path, not present `/goal` and `ultracode:` as equally likely choices. It may include the non-recommended alternative under "Advanced / large-scale option" only when the plan shape plausibly warrants it.
 
-For `lfg`, the unified artifact is not a launch menu. It is a machine gate between `ce-plan` and `ce-work`. LFG should invoke `ce-plan`, record the produced plan path, inspect metadata/readiness, and proceed only when the artifact is an implementation-ready code plan. It should then invoke `ce-work` with the exact plan path in caller-owned-tail mode. It should not parse Goal Launch Blocks, should not rely on `ce-plan`'s interactive post-generation offer, should not launch `/goal` directly, and should not auto-run implementation on a requirements-only skeleton, universal plan, answer, or approach-plan unless that path explicitly created an implementation-ready software plan first.
+For `lfg`, the unified artifact is not a launch menu. It is a machine gate between `ce-plan` and `ce-work`. LFG should invoke `ce-plan`, record the produced plan path, inspect metadata/readiness, and proceed only when the artifact is an implementation-ready code plan. It should then invoke `ce-work` with the exact plan path in caller-owned-tail mode. It should not look for a launch prompt in the doc, should not rely on `ce-plan`'s interactive post-generation offer, should not launch `/goal` directly, and should not auto-run implementation on a requirements-only skeleton, universal plan, answer, or approach-plan unless that path explicitly created an implementation-ready software plan first.
 
 After `ce-work` returns, LFG must verify implementation changed files beyond the plan and continue its own downstream pipeline: run `ce-simplify-code` when applicable, run `ce-code-review mode:agent plan:<path>`, apply eligible review fixes, run browser tests, commit/push/open PR, and watch CI. The goal-mode decision is centralized inside `ce-work`; LFG remains the outer autonomous shipping pipeline.
 
-### Goal Launch Block
+### Launch prompts (emitted at handoff)
 
-Required near the top of every unified artifact, ideally within the first 100 lines. This is the section `ce-plan` can surface immediately after writing or enriching a plan. It is not a generic instruction blob; it is a readiness-specific next action.
+The launch prompt is **not a section in the artifact**. It is generated by the skill at handoff — printed as a copyable block on Claude Code, or passed to `create_goal` on Codex — from a single living template (`ce-work`'s `references/execution-engines.md`). It is readiness-specific: a planning prompt for requirements-only, an implementation prompt for implementation-ready.
 
-The Goal Launch Block should stay thin. It names the action, path, read order, tail profile, and stop condition, then points into document sections. It should not duplicate requirements, implementation details, full verification matrices, or product rationale. Duplicating that material creates drift inside the same file; the plan body is the authority.
+Each emitted prompt stays thin. It names the action, path, read order, tail profile, and stop condition, then points into the document's sections rather than duplicating requirements, implementation details, full verification matrices, or product rationale — the plan body is the authority.
 
-For `artifact_readiness: requirements-only`, the block must route to planning, not execution:
-
-````markdown
-## Goal Launch Block
-
-Recommended next prompt:
+For `artifact_readiness: requirements-only`, the emitted prompt routes to planning, not execution:
 
 ```text
 /goal Enrich docs/plans/example-plan.md into an implementation-ready plan.
 
-Use the Product Contract as authority. Produce Planning Contract, Implementation Units, Definition of Done, and a final Goal Launch Block for execution. Do not implement code. If open product questions would change behavior, stop and report the exact questions instead of inventing scope.
+Use the Product Contract as authority. Produce Planning Contract, Implementation Units, Verification Contract, and Definition of Done. Do not implement code. If open product questions would change behavior, stop and report the exact questions instead of inventing scope.
 ```
-````
 
-For `artifact_readiness: implementation-ready` with `execution: code`, the block must route to implementation and declare which tail profile owns quality gates. Generated artifacts should prefer a standalone top-level prompt for humans and an implementation-only prompt for skill callers that need an internal engine.
-
-````markdown
-## Goal Launch Block
-
-Standalone top-level prompt:
+For `artifact_readiness: implementation-ready` with `execution: code`, the emitted prompt routes to implementation and declares which tail profile owns quality gates. Generated handoffs prefer a standalone top-level prompt for humans and an implementation-only prompt for skill callers that need an internal engine.
 
 ```text
 /goal Implement docs/plans/example-plan.md through its Definition of Done.
@@ -241,7 +230,6 @@ This top-level goal owns implementation quality gates. Run simplification and co
 
 The condition is satisfied when the transcript shows: all non-deferrable U-IDs are completed; each Per-Unit DoD row has an observed verification result; required repo checks passed or are documented as not applicable; applicable simplification/review gates ran or were explicitly skipped with reason; no plan body progress/status was written; and no PR was opened by this goal. Stop early only when a named blocker prevents completion.
 ```
-````
 
 When a skill caller needs an internal implementation engine, use a shorter implementation-only variant:
 
@@ -275,14 +263,14 @@ ultracode: Execute docs/plans/example-plan.md as an end-to-end dynamic workflow.
 Use the plan as authority. First build a workflow around the Implementation Units and Definition of Done. Parallelize only independent U-IDs with disjoint file ownership, keep intermediate agent results inside the workflow, run simplification/review/verification gates inside the workflow tail, and return a final summary with changed files, U-IDs completed, verification results, residual findings, and blockers.
 ```
 
-For universal-planning mode, answer-seeking mode, and approach-altitude "plan for a plan" outputs, do not emit this unified implementation `Goal Launch Block` unless the output is explicitly a software implementation plan. Those modes may still offer a `/goal` launch when the output is saved, goal-shaped, and has its own done criteria. The prompt must name the real deliverable, such as "produce the implementation plan from this approach-plan" or "execute this research plan and deliver the synthesis," not "implement code."
+For universal-planning mode, answer-seeking mode, and approach-altitude "plan for a plan" outputs, do not emit this implementation launch prompt unless the output is explicitly a software implementation plan. Those modes may still offer a `/goal` launch when the output is saved, goal-shaped, and has its own done criteria. The prompt must name the real deliverable, such as "produce the implementation plan from this approach-plan" or "execute this research plan and deliver the synthesis," not "implement code."
 
 After writing a plan, `ce-plan` should use this launch matrix:
 
 | Output classification | `ce-plan` post-output offer |
 |---|---|
 | Unified artifact, `artifact_readiness: requirements-only` | Offer to continue with `ce-plan` enrichment using the plan path. Do not offer execution. |
-| Unified artifact, `artifact_readiness: implementation-ready`, `execution: code` | Offer to start the Goal Launch Block prompt, or to hand off to `ce-work` where that is the platform's execution primitive. |
+| Unified artifact, `artifact_readiness: implementation-ready`, `execution: code` | Offer to start the launch prompt (copyable `/goal` on Claude Code, `create_goal` on Codex), or to hand off to `ce-work`. |
 | Universal plan, `execution: knowledge-work` | Offer a knowledge-work goal only when the saved plan has a concrete deliverable and DoD; otherwise offer the domain-appropriate next step from universal-planning. |
 | Answer-seeking universal-planning output | Deliver the answer; no saved-plan launch offer. |
 | Approach-altitude / plan-for-a-plan output | Offer the checkpoint choices from `references/approach-altitude.md`: execute now, save/deepen, start a planning/knowledge-work goal, or stop. Only route into code implementation if the accepted deliverable is an implementation-ready software plan. |
@@ -304,7 +292,7 @@ Compact routing table. Required fields:
 |---|---|
 | Artifact readiness | Says whether this is requirements-only or implementation-ready. |
 | Product contract source | Says whether product scope came from `ce-brainstorm`, `ce-plan` bootstrap, or a legacy origin path. |
-| Read first | Points every agent to `Goal Launch Block` and `Goal Capsule`; points to `Definition of Done` only when present. |
+| Read first | Points every agent to `Goal Capsule`; points to `Definition of Done` only when present. |
 | Implementer path | Names the sections `ce-work` and worker agents must read. |
 | Reviewer path | Names the sections reviewers should inspect first. |
 | Token notes | Names sections safe to skip unless needed, especially appendices. |
@@ -374,7 +362,7 @@ Required fields:
 | Metric thresholds | When the goal is optimization-shaped (build time, latency, coverage, bundle size), a measurable exit threshold (e.g., "p95 latency < 200ms", "build time reduced 30%") rather than a boolean check. Route metric-driven loops to `ce-optimize`. |
 | Known skips | Checks intentionally skipped and the reason the skip is acceptable. |
 
-The Goal Launch Block and Definition of Done should reference this section rather than relying on generic phrases like "run tests." Per-unit `Verification` fields still name local unit checks; the Verification Contract names global and conditional repo checks. A metric target is a sharper done signal for a long-running goal than a boolean check, because the goal runner re-evaluates it after each turn (Claude Code) or drives toward it autonomously over hours (Codex) — see the `/goal` guide in Sources & Research.
+The emitted launch prompt and Definition of Done should reference this section rather than relying on generic phrases like "run tests." Per-unit `Verification` fields still name local unit checks; the Verification Contract names global and conditional repo checks. A metric target is a sharper done signal for a long-running goal than a boolean check, because the goal runner re-evaluates it after each turn (Claude Code) or drives toward it autonomously over hours (Codex) — see the `/goal` guide in Sources & Research.
 
 ### Definition of Done
 
@@ -400,9 +388,9 @@ Required once the artifact is implementation-ready. Requirements-only skeletons 
 | U1 | Concrete observable outcome | Test/manual check result | Named dependency | no |
 ```
 
-### Goal-Mode Prompt Compatibility
+### Legacy launch-prompt sections
 
-The old section name `Goal-Mode Prompt` should be replaced by `Goal Launch Block` for new unified artifacts. Legacy readers may continue to recognize `## Goal-Mode Prompt` as an alias during migration, but new docs should emit only `## Goal Launch Block` to avoid duplicate competing prompts.
+New unified artifacts contain **no** launch-prompt section — the launch prompt is skill-emitted (see "Launch prompts (emitted at handoff)"). Older docs may carry a `## Goal-Mode Prompt` or `## Goal Launch Block` section; readers treat any such section as stale and rely on the skill-emitted prompt instead, never executing a frozen in-doc prompt.
 
 ---
 
@@ -418,7 +406,7 @@ The old section name `Goal-Mode Prompt` should be replaced by `Goal Launch Block
   - Modify: `skills/ce-plan/references/markdown-rendering.md`
   - Modify: `skills/ce-plan/references/html-rendering.md`
   - Mirror rendering changes into `ce-brainstorm` and `ce-ideate` reference copies if parity tests still require them.
-- **Approach:** Introduce `artifact_contract: ce-unified-plan/v1`, `artifact_readiness`, `product_contract_source`, `Goal Launch Block`, `Reader Index`, `Goal Capsule`, `Product Contract`, `Planning Contract`, `Verification Contract`, and `Definition of Done` as the new contract. Keep no-status language, and define readiness as document completeness rather than work progress.
+- **Approach:** Introduce `artifact_contract: ce-unified-plan/v1`, `artifact_readiness`, `product_contract_source`, `Reader Index`, `Goal Capsule`, `Product Contract`, `Planning Contract`, `Verification Contract`, and `Definition of Done` as the new contract (the launch prompt is skill-emitted, not a section). Keep no-status language, and define readiness as document completeness rather than work progress.
 - **Test scenarios:**
   - Contract tests detect required metadata fields and reject `status:`.
   - Contract tests reject progress-like readiness values such as `active`, `in_progress`, `completed`, and `done`.
@@ -444,7 +432,7 @@ The old section name `Goal-Mode Prompt` should be replaced by `Goal Launch Block
   - Handoff to `ce-plan` passes the plan path, not a requirements path.
   - Requirements-only skeletons do not claim to be executable.
   - Requirements-only Reader Index does not point implementers at missing `Definition of Done` or `Implementation Units` sections.
-  - Requirements-only Goal Launch Block points to `ce-plan` enrichment, not execution.
+  - Requirements-only artifacts emit no launch-prompt section; the next step (ce-plan enrichment) is conveyed by the handoff menu, not the doc.
   - `Build it now` / direct-to-`ce-work` handoff is hidden unless a requirements-only artifact is explicitly deemed small enough to skip planning and the needed DoD is present in chat or the artifact.
 - **Verification:** New tests fail if `ce-brainstorm` points new outputs at `docs/brainstorms/*-requirements.*`.
 
@@ -458,7 +446,7 @@ The old section name `Goal-Mode Prompt` should be replaced by `Goal Launch Block
   - Modify: `skills/ce-plan/references/deepening-workflow.md`
   - Modify: `skills/ce-plan/references/plan-handoff.md`
   - Modify tests under `tests/skills/ce-plan-*`
-- **Approach:** Phase 0 searches for explicit paths first, then recent unified plans with `artifact_readiness: requirements-only`, then legacy `docs/brainstorms/*-requirements.*`. When enriching, `ce-plan` updates `artifact_readiness: implementation-ready`, fills `Planning Contract`, `Implementation Units`, `Verification Contract`, `Definition of Done`, and the implementation-ready Goal Launch Block, and preserves R/A/F/AE IDs.
+- **Approach:** Phase 0 searches for explicit paths first, then recent unified plans with `artifact_readiness: requirements-only`, then legacy `docs/brainstorms/*-requirements.*`. When enriching, `ce-plan` updates `artifact_readiness: implementation-ready`, adds `Reader Index` and fills `Planning Contract`, `Implementation Units`, `Verification Contract`, and `Definition of Done`, and preserves R/A/F/AE IDs.
 - **Test scenarios:**
   - Direct `ce-plan` creates a complete unified plan without an origin doc.
   - `ce-plan <unified-plan-path>` updates that file rather than creating a duplicate.
@@ -495,7 +483,7 @@ The old section name `Goal-Mode Prompt` should be replaced by `Goal Launch Block
   - `ce-work` can use a supported goal-mode engine for implementation, then resumes standalone review/simplification/testing/commit/handoff gates when not caller-owned.
   - `ce-work` can use a supported dynamic-workflow engine for large fan-out plans and returns structured results/blockers.
   - Goal-mode `ce-work` prompts are scoped to implementation only and explicitly do not open PRs, finalize handoff, or bypass the owning workflow's gates.
-  - Generated Goal Launch Blocks distinguish standalone top-level goals from implementation-only engine prompts, and only the standalone profile owns simplify/review gates by default.
+  - Emitted launch prompts distinguish standalone top-level goals from implementation-only engine prompts, and only the standalone profile owns simplify/review gates by default.
   - `lfg` stops after `ce-plan` when the produced artifact is not `artifact_readiness: implementation-ready` plus `execution: code`.
   - `lfg` passes the recorded unified plan path to `ce-work` in caller-owned-tail mode, then to `ce-code-review mode:agent plan:<path>` and later pipeline steps.
   - `ce-work mode:caller-owned-tail` returns status, plan path, changed files, U-IDs attempted/completed, verification results, blockers, behavior-change signal, and confirmation that standalone shipping was skipped.
@@ -524,7 +512,7 @@ The old section name `Goal-Mode Prompt` should be replaced by `Goal Launch Block
 - **Approach:** Preserve exclusive output mode. Re-evaluate separate `brainstorm_output` and `plan_output` config keys because both skills now write the same artifact class. Prefer a backward-compatible config migration: keep both keys initially, but document exact enrichment precedence: explicit path format wins for in-place enrichment; explicit `output:` may convert only with a visible old-path/new-path note; pipeline mode may force markdown only by writing the canonical markdown path and leaving the HTML artifact untouched with a clear note. When a conversion or pipeline override creates same-basename `.md` and `.html` siblings, the new artifact path is canonical for later automated discovery, and the old sibling must be marked or reported as non-canonical so `ce-plan`/`ce-work` do not treat both as competing latest plans.
 - **Test scenarios:**
   - HTML unified plans include visible readiness metadata and a navigation region.
-  - Long HTML documents expose anchors for `Goal Launch Block`, `Reader Index`, `Goal Capsule`, `Product Contract`, `Planning Contract`, `Implementation Units`, and `Definition of Done`.
+  - Long HTML documents expose anchors for `Reader Index`, `Goal Capsule`, `Product Contract`, `Planning Contract`, `Implementation Units`, and `Definition of Done`.
   - Markdown documents include the same sections without embedded HTML.
   - `brainstorm_output: html` followed by `ce-plan` preserves HTML unless an explicit conversion or pipeline override applies.
   - Explicit `ce-plan output:md <html-unified-plan>` documents the conversion path instead of silently forking canonical artifacts.
@@ -575,8 +563,8 @@ The old section name `Goal-Mode Prompt` should be replaced by `Goal Launch Block
 - **Test scenarios:**
   - New brainstorm output path is `docs/plans/`.
   - Legacy requirements docs still appear in ce-plan discovery guidance.
-  - Unified artifacts include `Goal Launch Block`, `Reader Index`, `Goal Capsule`, and, when implementation-ready, `Verification Contract` and `Definition of Done`.
-  - Goal Launch Block stays thin and points to authoritative sections instead of duplicating requirements, verification, or implementation details.
+  - Unified artifacts include `Goal Capsule` and `Product Contract`, and, when implementation-ready, `Reader Index`, `Verification Contract`, and `Definition of Done`. No `Goal Launch Block` section exists.
+  - The skill-emitted launch prompt stays thin and points to authoritative sections instead of duplicating requirements, verification, or implementation details.
   - Unified artifact consumers define a pre-read algorithm before any full-document read.
   - Heading scans can find major markdown sections and U-ID ranges.
   - HTML extraction guidance can find visible metadata and section anchors without parsing hidden machine data.
@@ -611,14 +599,14 @@ This document is suitable for top-level `/goal` execution only if the launching 
 
 | Readiness check | Required evidence in this plan | Current state |
 |---|---|---|
-| Concrete objective | Summary and Goal Launch Block name the refactor and target artifact. | Ready |
+| Concrete objective | Summary and Goal Capsule name the refactor and target artifact. | Ready |
 | Authority source | Requirements, Key Technical Decisions, and System-Wide Impact define what must hold. | Ready |
 | Work decomposition | Implementation Units have U-IDs, goals, files, approaches, tests, and verification. | Ready |
 | Completion criteria | Global DoD and Per-Unit DoD define observable done signals. | Ready |
 | Verification commands | Verification Contract and DoD name `bun test`, `bun run release:validate` when applicable, and `skill-creator` behavioral evaluation. | Ready |
-| Stop conditions | Goal Launch Block says to stop on blocker, wrong naming/config migration, or unsatisfied DoD. | Ready |
-| Tail ownership | Goal Launch Block is top-level: it owns implementation quality gates but does not open a PR. | Ready |
-| Context discipline | Goal Launch Block and Reader Strategy tell the agent what to read first and when to avoid full-doc reads. | Ready |
+| Stop conditions | The emitted launch prompt sets the stop condition (blocker, wrong naming/config migration, or unsatisfied DoD). | Ready |
+| Tail ownership | The emitted standalone launch prompt owns implementation quality gates but does not open a PR. | Ready |
+| Context discipline | The emitted launch prompt and the Reader Strategy tell the agent what to read first and when to avoid full-doc reads. | Ready |
 | Deferred decisions | Open Questions are **non-blocking**: naming/config decisions carried sensible defaults during implementation (e.g., `requirements-only`/`implementation-ready`; both output config keys retained). Per the readiness rule, a *blocking* open question would have kept this `requirements-only`; these did not. | Ready (open questions deferred) |
 
 For top-level `/goal`, the launch prompt should include:
@@ -678,14 +666,17 @@ If any readiness row is not satisfied, the correct goal is not "implement"; it i
 
 ---
 
-## Goal Launch Block
+## Execution Prompt (record)
 
 > This is a **pre-contract meta-plan**: it *defines* the `ce-unified-plan/v1`
 > contract and therefore predates it. It uses classic plan sections (Summary,
 > Requirements, Key Technical Decisions, Implementation Units, Definition of
 > Done) rather than the v1 registry (Reader Index / Goal Capsule / Product
-> Contract / Planning Contract / Verification Contract). The read-first list
-> below names the sections this document actually contains.
+> Contract / Planning Contract / Verification Contract). Under the contract this
+> plan landed, the launch prompt is skill-emitted at handoff, not a baked
+> section; the prompt below is retained only as a record of how this plan was
+> executed. The read-first list names the sections this document actually
+> contains.
 
 ```text
 /goal Implement docs/plans/2026-06-18-001-refactor-unified-plan-doc-artifact-plan.md through its Definition of Done.
@@ -772,7 +763,7 @@ Rationale: Cursor's feedback is consistent with the core design principle: the d
 Two additional Codex subagent reviews were run after the LFG/`ce-work` goal-mode discussion:
 
 - **Skill impact review:** Accepted findings that blank `ce-work` discovery must be conservative, caller-owned-tail needs explicit syntax and a return envelope, `ce-doc-review` HTML behavior must remain skipped/report-only until mutation is safe, and impacted scope must include `ce-work-beta`, `ce-ideate`, `ce-riffrec-feedback-analysis`, `tests/review-skill-contract.test.ts`, and same-basename output-mode tests.
-- **Goal/dynamic workflow review:** Accepted findings that goal-mode must be treated as a host capability rather than a universally callable slash command, implementation Goal Launch Blocks need evaluator-visible completion conditions, requirements-only enrichment goals must stop on product blockers, and dynamic workflows / ultracode-style orchestration deserve a separate engine lane from `/goal`.
+- **Goal/dynamic workflow review:** Accepted findings that goal-mode must be treated as a host capability rather than a universally callable slash command, implementation launch prompts need evaluator-visible completion conditions, requirements-only enrichment goals must stop on product blockers, and dynamic workflows / ultracode-style orchestration deserve a separate engine lane from `/goal`.
 
 Rejected/adjusted feedback: LFG should not choose goal-mode directly. The reconciled design keeps LFG as the outer pipeline caller and centralizes implementation-engine selection inside `ce-work`; LFG invokes `ce-work` in caller-owned-tail mode and resumes its own pipeline afterward.
 
